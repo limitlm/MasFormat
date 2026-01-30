@@ -134,7 +134,10 @@ function OnAction(control) {
         // 调用页面格式化功能
         if (typeof pageFormat === "function") {
           pageFormat();
-        } else if (typeof FormatUtils !== "undefined" && typeof FormatUtils.pageFormat === "function") {
+        } else if (
+          typeof FormatUtils !== "undefined" &&
+          typeof FormatUtils.pageFormat === "function"
+        ) {
           FormatUtils.pageFormat();
         } else {
           alert("页面格式化功能未加载");
@@ -146,7 +149,10 @@ function OnAction(control) {
         // 调用标题格式化功能
         if (typeof titleFormat === "function") {
           titleFormat();
-        } else if (typeof FormatUtils !== "undefined" && typeof FormatUtils.titleFormat === "function") {
+        } else if (
+          typeof FormatUtils !== "undefined" &&
+          typeof FormatUtils.titleFormat === "function"
+        ) {
           FormatUtils.titleFormat();
         } else {
           alert("标题格式化功能未加载");
@@ -158,7 +164,10 @@ function OnAction(control) {
         // 调用表格格式化功能
         if (typeof tableFormat === "function") {
           tableFormat();
-        } else if (typeof FormatUtils !== "undefined" && typeof FormatUtils.tableFormat === "function") {
+        } else if (
+          typeof FormatUtils !== "undefined" &&
+          typeof FormatUtils.tableFormat === "function"
+        ) {
           FormatUtils.tableFormat();
         } else {
           alert("表格格式化功能未加载");
@@ -170,7 +179,10 @@ function OnAction(control) {
         // 调用图片格式化功能
         if (typeof imageFormat === "function") {
           imageFormat();
-        } else if (typeof FormatUtils !== "undefined" && typeof FormatUtils.imageFormat === "function") {
+        } else if (
+          typeof FormatUtils !== "undefined" &&
+          typeof FormatUtils.imageFormat === "function"
+        ) {
           FormatUtils.imageFormat();
         } else {
           alert("图片格式化功能未加载");
@@ -182,7 +194,10 @@ function OnAction(control) {
         // 调用正文格式化功能
         if (typeof bodyTextFormat === "function") {
           bodyTextFormat();
-        } else if (typeof FormatUtils !== "undefined" && typeof FormatUtils.bodyTextFormat === "function") {
+        } else if (
+          typeof FormatUtils !== "undefined" &&
+          typeof FormatUtils.bodyTextFormat === "function"
+        ) {
           FormatUtils.bodyTextFormat();
         } else {
           alert("正文格式化功能未加载");
@@ -194,7 +209,10 @@ function OnAction(control) {
         // 调用更新目录域功能
         if (typeof updateTOC === "function") {
           updateTOC();
-        } else if (typeof FormatUtils !== "undefined" && typeof FormatUtils.updateTOC === "function") {
+        } else if (
+          typeof FormatUtils !== "undefined" &&
+          typeof FormatUtils.updateTOC === "function"
+        ) {
           FormatUtils.updateTOC();
         } else {
           alert("更新目录域功能未加载");
@@ -206,7 +224,10 @@ function OnAction(control) {
         // 调用全部执行格式化功能
         if (typeof executeAllFormats === "function") {
           executeAllFormats();
-        } else if (typeof FormatUtils !== "undefined" && typeof FormatUtils.executeAllFormats === "function") {
+        } else if (
+          typeof FormatUtils !== "undefined" &&
+          typeof FormatUtils.executeAllFormats === "function"
+        ) {
           FormatUtils.executeAllFormats();
         } else {
           alert("全部执行功能未加载");
