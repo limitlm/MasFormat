@@ -18,6 +18,34 @@ function OnAddinLoad(ribbonUI) {
 }
 
 var WebNotifycount = 0;
+var isExecuting = false; // 标记是否有功能正在执行
+
+// 禁用所有7个格式化功能按钮
+function disableAllFormatButtons() {
+  if (window.Application.ribbonUI) {
+    window.Application.ribbonUI.InvalidateControl("btnPageFormat");
+    window.Application.ribbonUI.InvalidateControl("btnTitleFormat");
+    window.Application.ribbonUI.InvalidateControl("btnTableFormat");
+    window.Application.ribbonUI.InvalidateControl("btnImageFormat");
+    window.Application.ribbonUI.InvalidateControl("btnBodyTextFormat");
+    window.Application.ribbonUI.InvalidateControl("btnUpdateTOC");
+    window.Application.ribbonUI.InvalidateControl("btnExecuteAll");
+  }
+}
+
+// 启用所有7个格式化功能按钮
+function enableAllFormatButtons() {
+  isExecuting = false;
+  if (window.Application.ribbonUI) {
+    window.Application.ribbonUI.InvalidateControl("btnPageFormat");
+    window.Application.ribbonUI.InvalidateControl("btnTitleFormat");
+    window.Application.ribbonUI.InvalidateControl("btnTableFormat");
+    window.Application.ribbonUI.InvalidateControl("btnImageFormat");
+    window.Application.ribbonUI.InvalidateControl("btnBodyTextFormat");
+    window.Application.ribbonUI.InvalidateControl("btnUpdateTOC");
+    window.Application.ribbonUI.InvalidateControl("btnExecuteAll");
+  }
+}
 function OnAction(control) {
   const eleId = control.Id;
   switch (eleId) {
@@ -131,106 +159,211 @@ function OnAction(control) {
       break;
     case "btnPageFormat":
       {
-        // 调用页面格式化功能
-        if (typeof pageFormat === "function") {
-          pageFormat();
-        } else if (
-          typeof FormatUtils !== "undefined" &&
-          typeof FormatUtils.pageFormat === "function"
-        ) {
-          FormatUtils.pageFormat();
-        } else {
-          alert("页面格式化功能未加载");
+        // 检查是否有其他功能正在执行
+        if (isExecuting) return;
+        
+        // 开始执行，禁用所有按钮
+        isExecuting = true;
+        disableAllFormatButtons();
+        
+        try {
+          // 调用页面格式化功能
+          if (typeof pageFormat === "function") {
+            pageFormat();
+          } else if (
+            typeof FormatUtils !== "undefined" &&
+            typeof FormatUtils.pageFormat === "function"
+          ) {
+            FormatUtils.pageFormat();
+          } else {
+            alert("页面格式化功能未加载");
+          }
+        } catch (error) {
+          console.error("页面格式化执行错误:", error);
+          alert("页面格式化执行出错: " + error.message);
+        } finally {
+          // 执行完成，启用所有按钮
+          enableAllFormatButtons();
         }
       }
       break;
     case "btnTitleFormat":
       {
-        // 调用标题格式化功能
-        if (typeof titleFormat === "function") {
-          titleFormat();
-        } else if (
-          typeof FormatUtils !== "undefined" &&
-          typeof FormatUtils.titleFormat === "function"
-        ) {
-          FormatUtils.titleFormat();
-        } else {
-          alert("标题格式化功能未加载");
+        // 检查是否有其他功能正在执行
+        if (isExecuting) return;
+        
+        // 开始执行，禁用所有按钮
+        isExecuting = true;
+        disableAllFormatButtons();
+        
+        try {
+          // 调用标题格式化功能
+          if (typeof titleFormat === "function") {
+            titleFormat();
+          } else if (
+            typeof FormatUtils !== "undefined" &&
+            typeof FormatUtils.titleFormat === "function"
+          ) {
+            FormatUtils.titleFormat();
+          } else {
+            alert("标题格式化功能未加载");
+          }
+        } catch (error) {
+          console.error("标题格式化执行错误:", error);
+          alert("标题格式化执行出错: " + error.message);
+        } finally {
+          // 执行完成，启用所有按钮
+          enableAllFormatButtons();
         }
       }
       break;
     case "btnTableFormat":
       {
-        // 调用表格格式化功能
-        if (typeof tableFormat === "function") {
-          tableFormat();
-        } else if (
-          typeof FormatUtils !== "undefined" &&
-          typeof FormatUtils.tableFormat === "function"
-        ) {
-          FormatUtils.tableFormat();
-        } else {
-          alert("表格格式化功能未加载");
+        // 检查是否有其他功能正在执行
+        if (isExecuting) return;
+        
+        // 开始执行，禁用所有按钮
+        isExecuting = true;
+        disableAllFormatButtons();
+        
+        try {
+          // 调用表格格式化功能
+          if (typeof tableFormat === "function") {
+            tableFormat();
+          } else if (
+            typeof FormatUtils !== "undefined" &&
+            typeof FormatUtils.tableFormat === "function"
+          ) {
+            FormatUtils.tableFormat();
+          } else {
+            alert("表格格式化功能未加载");
+          }
+        } catch (error) {
+          console.error("表格格式化执行错误:", error);
+          alert("表格格式化执行出错: " + error.message);
+        } finally {
+          // 执行完成，启用所有按钮
+          enableAllFormatButtons();
         }
       }
       break;
     case "btnImageFormat":
       {
-        // 调用图片格式化功能
-        if (typeof imageFormat === "function") {
-          imageFormat();
-        } else if (
-          typeof FormatUtils !== "undefined" &&
-          typeof FormatUtils.imageFormat === "function"
-        ) {
-          FormatUtils.imageFormat();
-        } else {
-          alert("图片格式化功能未加载");
+        // 检查是否有其他功能正在执行
+        if (isExecuting) return;
+        
+        // 开始执行，禁用所有按钮
+        isExecuting = true;
+        disableAllFormatButtons();
+        
+        try {
+          // 调用图片格式化功能
+          if (typeof imageFormat === "function") {
+            imageFormat();
+          } else if (
+            typeof FormatUtils !== "undefined" &&
+            typeof FormatUtils.imageFormat === "function"
+          ) {
+            FormatUtils.imageFormat();
+          } else {
+            alert("图片格式化功能未加载");
+          }
+        } catch (error) {
+          console.error("图片格式化执行错误:", error);
+          alert("图片格式化执行出错: " + error.message);
+        } finally {
+          // 执行完成，启用所有按钮
+          enableAllFormatButtons();
         }
       }
       break;
     case "btnBodyTextFormat":
       {
-        // 调用正文格式化功能
-        if (typeof bodyTextFormat === "function") {
-          bodyTextFormat();
-        } else if (
-          typeof FormatUtils !== "undefined" &&
-          typeof FormatUtils.bodyTextFormat === "function"
-        ) {
-          FormatUtils.bodyTextFormat();
-        } else {
-          alert("正文格式化功能未加载");
+        // 检查是否有其他功能正在执行
+        if (isExecuting) return;
+        
+        // 开始执行，禁用所有按钮
+        isExecuting = true;
+        disableAllFormatButtons();
+        
+        try {
+          // 调用正文格式化功能
+          if (typeof bodyTextFormat === "function") {
+            bodyTextFormat();
+          } else if (
+            typeof FormatUtils !== "undefined" &&
+            typeof FormatUtils.bodyTextFormat === "function"
+          ) {
+            FormatUtils.bodyTextFormat();
+          } else {
+            alert("正文格式化功能未加载");
+          }
+        } catch (error) {
+          console.error("正文格式化执行错误:", error);
+          alert("正文格式化执行出错: " + error.message);
+        } finally {
+          // 执行完成，启用所有按钮
+          enableAllFormatButtons();
         }
       }
       break;
     case "btnUpdateTOC":
       {
-        // 调用更新目录域功能
-        if (typeof updateTOC === "function") {
-          updateTOC();
-        } else if (
-          typeof FormatUtils !== "undefined" &&
-          typeof FormatUtils.updateTOC === "function"
-        ) {
-          FormatUtils.updateTOC();
-        } else {
-          alert("更新目录域功能未加载");
+        // 检查是否有其他功能正在执行
+        if (isExecuting) return;
+        
+        // 开始执行，禁用所有按钮
+        isExecuting = true;
+        disableAllFormatButtons();
+        
+        try {
+          // 调用更新目录域功能
+          if (typeof updateTOC === "function") {
+            updateTOC();
+          } else if (
+            typeof FormatUtils !== "undefined" &&
+            typeof FormatUtils.updateTOC === "function"
+          ) {
+            FormatUtils.updateTOC();
+          } else {
+            alert("更新目录域功能未加载");
+          }
+        } catch (error) {
+          console.error("更新目录域执行错误:", error);
+          alert("更新目录域执行出错: " + error.message);
+        } finally {
+          // 执行完成，启用所有按钮
+          enableAllFormatButtons();
         }
       }
       break;
     case "btnExecuteAll":
       {
-        // 调用全部执行格式化功能
-        if (typeof executeAllFormats === "function") {
-          executeAllFormats();
-        } else if (
-          typeof FormatUtils !== "undefined" &&
-          typeof FormatUtils.executeAllFormats === "function"
-        ) {
-          FormatUtils.executeAllFormats();
-        } else {
-          alert("全部执行功能未加载");
+        // 检查是否有其他功能正在执行
+        if (isExecuting) return;
+        
+        // 开始执行，禁用所有按钮
+        isExecuting = true;
+        disableAllFormatButtons();
+        
+        try {
+          // 调用全部执行格式化功能
+          if (typeof executeAllFormats === "function") {
+            executeAllFormats();
+          } else if (
+            typeof FormatUtils !== "undefined" &&
+            typeof FormatUtils.executeAllFormats === "function"
+          ) {
+            FormatUtils.executeAllFormats();
+          } else {
+            alert("全部执行功能未加载");
+          }
+        } catch (error) {
+          console.error("全部执行格式化错误:", error);
+          alert("全部执行格式化出错: " + error.message);
+        } finally {
+          // 执行完成，启用所有按钮
+          enableAllFormatButtons();
         }
       }
       break;
@@ -270,6 +403,15 @@ function OnGetEnabled(control) {
       return bFlag;
       break;
     }
+    case "btnPageFormat":
+    case "btnTitleFormat":
+    case "btnTableFormat":
+    case "btnImageFormat":
+    case "btnBodyTextFormat":
+    case "btnUpdateTOC":
+    case "btnExecuteAll":
+      return !isExecuting;
+      break;
     default:
       break;
   }
