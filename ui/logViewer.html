@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mas标书格式化 - 执行日志</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        #clearLogBtn {
+            background-color: #dc3545;
+            color: white;
+        }
+        
+        #clearLogBtn:hover {
+            background-color: #c82333;
+        }
+        
+        #logContainer {
+            position: relative;
+            margin-bottom: 15px;
+        }
+        
+        #logTextarea {
+            width: 100%;
+            height: 400px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            resize: none;
+            background-color: #f8f9fa;
+            color: #333;
+            overflow-y: auto;
+        }
+        
+        #logTextarea:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+        
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #6c757d;
+        }
+        
+        .log-count {
+            font-weight: 500;
+        }
+        
+        /* 日志级别样式 */
+        .log-info {
+            color: #212529;
+        }
+        
+        .log-success {
+            color: #28a745;
+        }
+        
+        .log-warning {
+            color: #ffc107;
+        }
+        
+        .log-error {
+            color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Mas标书格式化 - 执行日志</h1>
+        
+        <div class="controls">
+            <button id="clearLogBtn">清空日志</button>
+            <div class="status-bar">
+                <span class="log-count">日志条数: <span id="logCount">0</span></span>
+                <span id="lastUpdate">最后更新: 未更新</span>
+            </div>
+        </div>
+        
+        <div id="logContainer">
+            <textarea id="logTextarea" readonly></textarea>
+        </div>
+    </div>
+    
+    <!-- 引入日志模块 -->
+    <script src="../js/log.js"></script>
+    
+    <script>
+        // 获取DOM元素
+        const logTextarea = document.getElementById('logTextarea');
+        const clearLogBtn = document.getElementById('clearLogBtn');
+        const logCountElement = document.getElementById('logCount');
+        const lastUpdateElement = document.getElementById('lastUpdate');
+        
+        // 初始化日志显示
+        function initLogDisplay() {
+            const logs = window.LogModule.getLogs();
+            logs.forEach(log => {
+                const logEntry = `[${log.time}] [${log.level}] ${log.message}\n`;
+                logTextarea.value += logEntry;
+            });
+            updateStatus();
+        }
+        
+        // 更新状态信息
+        function updateStatus() {
+            const logs = window.LogModule.getLogs();
+            logCountElement.textContent = logs.length;
+            
+            if (logs.length > 0) {
+                const lastLog = logs[logs.length - 1];
+                lastUpdateElement.textContent = `最后更新: ${lastLog.time}`;
+            } else {
+                lastUpdateElement.textContent = '最后更新: 未更新';
+            }
+        }
+        
+        // 添加日志监听器
+        window.LogModule.addListener(function(data) {
+            if (data.type === 'clear') {
+                logTextarea.value = '';
+            } else {
+                const logEntry = `[${data.time}] [${data.level}] ${data.message}\n`;
+                logTextarea.value += logEntry;
+                logTextarea.scrollTop = logTextarea.scrollHeight;
+            }
+            updateStatus();
+        });
+        
+        // 清空日志函数
+        function clearLog() {
+            window.LogModule.clearLogs();
+            window.LogModule.addLog('日志已清空', 'info');
+        }
+        
+        // 绑定清空按钮事件
+        clearLogBtn.addEventListener('click', clearLog);
+        
+        // 初始化
+        initLogDisplay();
+    </script>
+</body>
+</html>
