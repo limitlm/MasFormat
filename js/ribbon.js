@@ -112,7 +112,7 @@ function OnAction(control) {
           GetUrlPath() + "/ui/logViewer.html",
           "Mas标书格式化 - 执行日志",
           500 * window.devicePixelRatio,
-          635 * window.devicePixelRatio,
+          666 * window.devicePixelRatio,
           false,
         );
       }

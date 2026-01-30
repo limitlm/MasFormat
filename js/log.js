@@ -1,5 +1,24 @@
 // 日志模块
 const LogModule = {
+    // 广播通道实例
+    broadcastChannel: null,
+    
+    /**
+     * 初始化广播通道
+     */
+    initBroadcastChannel() {
+        try {
+            if (window.BroadcastChannel) {
+                this.broadcastChannel = new BroadcastChannel('mas-format-logs-channel');
+                console.log('BroadcastChannel初始化成功');
+            } else {
+                console.warn('当前环境不支持BroadcastChannel');
+            }
+        } catch (error) {
+            console.error('初始化BroadcastChannel失败:', error);
+        }
+    },
+    
     /**
      * 从 PluginStorage 加载日志
      */
@@ -48,7 +67,8 @@ const LogModule = {
         const logEntry = {
             time: timeString,
             level: level.toUpperCase(),
-            message: message
+            message: message,
+            timestamp: now.getTime()
         };
         
         // 加载现有日志
@@ -60,6 +80,9 @@ const LogModule = {
         
         // 通知所有监听器
         this.notifyListeners(logEntry);
+        
+        // 广播日志到其他页面
+        this.broadcastLog(logEntry);
         
         return logEntry;
     },
@@ -73,6 +96,9 @@ const LogModule = {
         
         // 通知所有监听器
         this.notifyListeners({ type: 'clear' });
+        
+        // 广播清空命令到其他页面
+        this.broadcastLog({ type: 'clear' });
     },
     
     /**
@@ -98,11 +124,77 @@ const LogModule = {
     notifyListeners(data) {
         this.listeners.forEach(listener => {
             if (typeof listener === 'function') {
-                listener(data);
+                try {
+                    listener(data);
+                } catch (error) {
+                    console.error('通知监听器失败:', error);
+                }
             }
         });
+    },
+    
+    /**
+     * 广播日志到其他页面
+     * @param {Object} data 日志数据
+     */
+    broadcastLog(data) {
+        try {
+            if (this.broadcastChannel) {
+                // 验证数据格式
+                const validData = this.validateLogData(data);
+                this.broadcastChannel.postMessage(validData);
+            }
+        } catch (error) {
+            console.error('广播日志失败:', error);
+        }
+    },
+    
+    /**
+     * 验证日志数据格式
+     * @param {Object} data 日志数据
+     * @returns {Object} 验证后的日志数据
+     */
+    validateLogData(data) {
+        if (typeof data !== 'object' || data === null) {
+            return { type: 'error', message: 'Invalid log data' };
+        }
+        
+        if (data.type === 'clear') {
+            return { type: 'clear', timestamp: Date.now() };
+        }
+        
+        return {
+            time: data.time || new Date().toLocaleString('zh-CN'),
+            level: data.level || 'INFO',
+            message: data.message || '',
+            timestamp: data.timestamp || Date.now(),
+            type: 'log'
+        };
+    },
+    
+    /**
+     * 关闭广播通道
+     */
+    closeBroadcastChannel() {
+        try {
+            if (this.broadcastChannel) {
+                this.broadcastChannel.close();
+                this.broadcastChannel = null;
+                console.log('BroadcastChannel已关闭');
+            }
+        } catch (error) {
+            console.error('关闭BroadcastChannel失败:', error);
+        }
     }
 };
 
 // 导出模块
 window.LogModule = LogModule;
+
+// 初始化广播通道
+window.LogModule.initBroadcastChannel();
+
+// 页面卸载时关闭广播通道
+window.addEventListener('beforeunload', function() {
+    window.LogModule.closeBroadcastChannel();
+});
