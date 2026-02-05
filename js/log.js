@@ -56,7 +56,6 @@ const LogModule = {
     addLog(message, level = 'info') {
         const now = new Date();
         const timeString = now.toLocaleString('zh-CN', {
-            year: 'numeric',
             month: '2-digit',
             day: '2-digit',
             hour: '2-digit',
@@ -164,7 +163,13 @@ const LogModule = {
         }
         
         return {
-            time: data.time || new Date().toLocaleString('zh-CN'),
+            time: data.time || new Date().toLocaleString('zh-CN', {
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            }),
             level: data.level || 'INFO',
             message: data.message || '',
             timestamp: data.timestamp || Date.now(),
