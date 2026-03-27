@@ -2,11 +2,13 @@
 
 /**
  * 页面格式化功能
+ * @description 设置文档为A4规格、2.5厘米页边距，配置页眉页脚和页码
  * @returns {boolean} 操作是否成功
  */
 function pageFormat() {
   const startTime = performance.now();
   const doc = window.Application.ActiveDocument;
+  
   if (!doc) {
     window.LogModule.addLog("当前没有打开任何文档", "warning");
     return false;
@@ -14,120 +16,100 @@ function pageFormat() {
 
   try {
     window.LogModule.addLog("开始执行页面格式化", "info");
-    // 实现页面格式化逻辑
-    // 1. 页面设置：A4规格，2.5厘米页边距（全局设置）
-    doc.PageSetup.PaperSize = 7;
-    doc.PageSetup.LeftMargin = 2.5 * 28.3465;
-    doc.PageSetup.RightMargin = 2.5 * 28.3465;
-    doc.PageSetup.TopMargin = 2.5 * 28.3465;
-    doc.PageSetup.BottomMargin = 2.5 * 28.3465;
-    window.LogModule.addLog("页面设置完成：A4规格，2.5厘米页边距", "info");
+    
+    // 常量定义
+    const CM_TO_POINT = 28.3465;
+    const PAPER_A4 = 7;
+    const ALIGN_CENTER = 1;
+    const ALIGN_RIGHT = 2;
+    const PAGE_NUMBER_ARABIC = 0;
 
-    // 2. 页眉页脚设置（全局设置）
-    doc.PageSetup.HeaderDistance = 1.5 * 28.3465;
-    doc.PageSetup.FooterDistance = 1.75 * 28.3465;
-    window.LogModule.addLog(
-      "页眉页脚设置完成：页眉1.5厘米，页脚1.75厘米",
-      "info",
-    );
+    // 步骤1：保存所有节的原有页面方向
+    const originalOrientations = [];
+    for (let i = 1; i <= doc.Sections.Count; i++) {
+      const ori = doc.Sections.Item(i).PageSetup.Orientation;
+      originalOrientations.push(ori);
+    }
+    window.LogModule.addLog(`已保存 ${doc.Sections.Count} 个节的页面方向`, "info");
 
-    // 获取第一节
-    var section1 = doc.Sections.Item(1);
+    // 步骤2：逐个节设置页面基础属性（避免文档级别干扰）
+    for (let i = 1; i <= doc.Sections.Count; i++) {
+      const section = doc.Sections.Item(i);
+      section.PageSetup.PaperSize = PAPER_A4;
+      section.PageSetup.LeftMargin = 2.5 * CM_TO_POINT;
+      section.PageSetup.RightMargin = 2.5 * CM_TO_POINT;
+      section.PageSetup.TopMargin = 2.5 * CM_TO_POINT;
+      section.PageSetup.BottomMargin = 2.5 * CM_TO_POINT;
+      section.PageSetup.HeaderDistance = 1.5 * CM_TO_POINT;
+      section.PageSetup.FooterDistance = 1.75 * CM_TO_POINT;
+    }
+    window.LogModule.addLog("页面基础设置完成：A4规格，2.5厘米页边距", "info");
 
-    // 获取页脚对象
-    var footer = section1.Footers.Item(1);
+    // 步骤3：恢复所有节的原有页面方向
+    for (let i = 1; i <= doc.Sections.Count; i++) {
+      doc.Sections.Item(i).PageSetup.Orientation = originalOrientations[i - 1];
+    }
+    window.LogModule.addLog("页面方向恢复完成", "info");
 
+    // 步骤4：配置第一节页脚（公司名称+页码）
+    const section1 = doc.Sections.Item(1);
+    const footer = section1.Footers.Item(1);
+    
     // 清除原有页脚内容
     footer.Range.Delete();
-    window.LogModule.addLog("清除原有页脚内容完成", "info");
-
-    // 3. 设置页码：在第二页添加阿拉伯数字页码，首页不显示
-    // 设置首页不同（仅第一节）
+    
+    // 设置首页不同
     section1.PageSetup.DifferentFirstPageHeaderFooter = true;
-    window.LogModule.addLog("设置首页不同页脚完成", "info");
-
-    // 设置页码样式为阿拉伯数字
-    section1.PageSetup.PageNumberStyle = 0;
-    window.LogModule.addLog("设置页码样式阿拉伯数字完成", "info");
-
-    // 4. 在主页脚中添加页码和公司名称
-    // 创建页脚范围
-    var footerRange = footer.Range;
-
-    // 先添加公司名称
+    section1.PageSetup.PageNumberStyle = PAGE_NUMBER_ARABIC;
+    
+    // 添加公司名称
+    const footerRange = footer.Range;
     footerRange.Text = "重庆梅安森科技股份有限公司 编制";
-    window.LogModule.addLog("添加公司名称到页脚完成", "info");
-
-    // 设置右对齐
-    footerRange.ParagraphFormat.Alignment = 2;
-    window.LogModule.addLog("设置公司名称右对齐完成", "info");
-
-    // 移动到行首并插入换行符
+    footerRange.ParagraphFormat.Alignment = ALIGN_RIGHT;
+    
+    // 插入换行符和页码
     footerRange.Collapse(1);
     footerRange.Text = "\n";
-    footerRange.MoveEnd(1, -1); // 移动到换行符前
-    window.LogModule.addLog("插入换行符完成", "info");
+    footerRange.MoveEnd(1, -1);
+    const pageField = footerRange.Fields.Add(footerRange, -1, "PAGE", false);
+    pageField.Code.ParagraphFormat.Alignment = ALIGN_CENTER;
+    
+    window.LogModule.addLog("第一节页脚配置完成", "info");
 
-    // 在换行符后插入页码字段
-    var pageField = footerRange.Fields.Add(footerRange, -1, "PAGE", false);
-    window.LogModule.addLog("插入页码字段完成", "info");
-
-    // 设置页码居中
-    pageField.Code.ParagraphFormat.Alignment = 1;
-    window.LogModule.addLog("设置页码居中完成", "info");
-
-    // 5. 设置节设置：确保页眉页脚同前节，页码连续
-    window.LogModule.addLog("开始设置其他节属性", "info");
-
-    // 遍历所有节（从第二节开始）
-    for (var i = 2; i <= doc.Sections.Count; i++) {
-      try {
-        var section = doc.Sections.Item(i);
-
-        // 对于其他节，取消首页不同设置，确保每节第一页也有页码
-        section.PageSetup.DifferentFirstPageHeaderFooter = false;
-
-        // 设置页眉页脚同前节
+    // 步骤5：配置其他节（页眉页脚同前节，页码连续）
+    if (doc.Sections.Count > 1) {
+      for (let i = 2; i <= doc.Sections.Count; i++) {
         try {
-          section.Headers.Item(1).LinkToPrevious = true;
-          section.Footers.Item(1).LinkToPrevious = true;
-        } catch (headerFooterError) {
-          window.LogModule.addLog(
-            "警告：设置第" +
-              i +
-              "节页眉页脚同前节失败 - " +
-              headerFooterError.description,
-            "warning",
-          );
+          const section = doc.Sections.Item(i);
+          section.PageSetup.DifferentFirstPageHeaderFooter = false;
+          
+          try {
+            section.Headers.Item(1).LinkToPrevious = true;
+            section.Footers.Item(1).LinkToPrevious = true;
+          } catch (e) {
+            window.LogModule.addLog(`警告：第${i}节页眉页脚同前节失败 - ${e.description}`, "warning");
+          }
+          
+          section.Footers.Item(1).PageNumbers.RestartNumberingAtSection = false;
+        } catch (e) {
+          window.LogModule.addLog(`错误：处理第${i}节失败 - ${e.description}`, "error");
         }
-
-        // 确保页码连续
-        section.Footers.Item(1).PageNumbers.RestartNumberingAtSection = false;
-        window.LogModule.addLog("设置第" + i + "节属性完成", "info");
-      } catch (sectionError) {
-        window.LogModule.addLog(
-          "错误：处理第" + i + "节失败 - " + sectionError.description,
-          "error",
-        );
       }
+      window.LogModule.addLog("其他节配置完成", "info");
     }
 
-    window.LogModule.addLog("所有节属性设置完成", "info");
-
-    // 6. 确保页码从1开始，首页设置为0
+    // 步骤6：设置页码起始值
     section1.Footers.Item(1).PageNumbers.RestartNumberingAtSection = true;
     section1.Footers.Item(1).PageNumbers.StartingNumber = 0;
     window.LogModule.addLog("页码起始设置完成", "info");
 
+    // 完成
     const endTime = performance.now();
     const duration = ((endTime - startTime) / 1000).toFixed(2);
-    window.LogModule.addLog(
-      "页面格式化完成，耗时：" + duration + "秒",
-      "success",
-    );
+    window.LogModule.addLog(`页面格式化完成，耗时：${duration}秒`, "success");
     return true;
   } catch (error) {
-    window.LogModule.addLog("页面格式化失败: " + error.message, "error");
+    window.LogModule.addLog(`页面格式化失败: ${error.message}`, "error");
     return false;
   }
 }

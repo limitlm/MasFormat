@@ -1,6 +1,17 @@
 <!DOCTYPE html>
 <html>
     <meta charset="utf-8">
+    <body>
+        <div style="padding: 20px; font-family: Arial, sans-serif;">
+            <h2>开始调试并愉快的写代码</h2>
+            <p>执行命令： <code>wpsjs debug</code></p>
+            <p>执行此命令后即可开始调试，wpsjs工具包会自动启动wps并加载HelloWps这个加载项，同时wpsjs工具包启了一个http服务,此服务主要提供两方面的能力:</p>
+            <ul>
+                <li>提供前端页的的热更新服务，wpsjs工具包检测到网页数据变化时，自动刷新页面。</li>
+                <li>提供wps加载项的在线服务，wpsjs生成的代码示例是一个在线模式，wps客户端程序实际上是通过http服务来请求在线的wps加载项相关代码和资源的。</li>
+            </ul>
+        </div>
+    </body>
     <script type="text/javascript" src="./main.js"></script>
 </html>
 <!--这个文件是wps加载项的入口文件，wps在启动时加载这个文件-->
