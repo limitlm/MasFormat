@@ -15,7 +15,7 @@ function pageFormat() {
   }
 
   try {
-    window.LogModule.addLog("开始执行页面格式化", "info");
+    window.LogModule.addLog("开始执行页面格式化", "warning");
     
     // 常量定义
     const CM_TO_POINT = 28.3465;
@@ -151,7 +151,7 @@ function titleFormat(options = {}) {
     
     // 先保存当前选择范围
     const originalSelection = window.Application.Selection.Range;
-    window.LogModule.addLog("开始刷新标题格式", "info");
+    window.LogModule.addLog("开始刷新标题格式", "warning");
     
     // 处理标题样式
     if (refreshStyles) {
@@ -170,13 +170,12 @@ function titleFormat(options = {}) {
         }
       }
       
-      // 恢复原始选择
-      originalSelection.Select();
+
     }
 
     // 清理标题多余字符
     if (removeNumbering) {
-      window.LogModule.addLog("开始清理标题多余字符", "info");
+      window.LogModule.addLog("开始清理标题多余字符", "warning");
       const paragraphs = doc.Paragraphs;
       const count = paragraphs.Count;
       
@@ -212,6 +211,15 @@ function titleFormat(options = {}) {
       
       // 显示处理结果
       window.LogModule.addLog(`处理完成！共处理了 ${processedCount} 个标题。`, "info");
+    }
+
+    // 恢复原始选择
+    if (originalSelection) {
+      try {
+        originalSelection.Select();
+      } catch (e) {
+        // 忽略恢复选择时的错误
+      }
     }
 
     const endTime = performance.now();
@@ -356,7 +364,7 @@ function executeAllFormats() {
   const startTime = performance.now();
   try {
     // 依次执行所有格式化功能
-    window.LogModule.addLog("开始执行全部格式化操作", "info");
+    window.LogModule.addLog("开始执行全部格式化操作", "warning");
     pageFormat();
     titleFormat();
     tableFormat();
