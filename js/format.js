@@ -116,10 +116,19 @@ function pageFormat() {
 
 /**
  * 标题格式化功能
+ * @param {Object} options - 配置选项
+ * @param {boolean} options.removeNumbering - 是否移除标题编号
+ * @param {boolean} options.refreshStyles - 是否刷新标题样式
+ * @param {boolean} options.showConfirm - 是否显示确认弹窗
  * @returns {boolean} 操作是否成功
  */
-function titleFormat() {
-  const startTime = performance.now();
+function titleFormat(options = {}) {
+  const {
+    removeNumbering = true,
+    refreshStyles = true,
+    showConfirm = true
+  } = options;
+
   const doc = window.Application.ActiveDocument;
   if (!doc) {
     window.LogModule.addLog("当前没有打开任何文档", "warning");
@@ -127,17 +136,102 @@ function titleFormat() {
   }
 
   try {
-    // 实现标题格式化逻辑
-    // 这里可以添加具体的标题格式化代码
+    // 显示确认弹窗
+    if (showConfirm) {
+      const confirmed = window.confirm("请确认已经应用自定义样式集，\n点击确认将自动执行标题格式化");
+      if (!confirmed) {
+        window.LogModule.addLog("用户取消了标题格式化操作", "info");
+        return false;
+      }
+    }
+    
+    // 开始记录执行时间
+    const startTime = performance.now();
+    let processedCount = 0;
+    
+    // 先保存当前选择范围
+    const originalSelection = window.Application.Selection.Range;
+    window.LogModule.addLog("开始刷新标题格式", "info");
+    
+    // 处理标题样式
+    if (refreshStyles) {
+      for (let i = 1; i <= 9; i++) {
+        const styleName = `标题 ${i}`;
+        
+        // 尝试选择所有当前标题样式实例
+        doc.SelectStyleInstance(styleName);
+        
+        // 检查是否成功选择了当前标题样式实例
+        const currentSelection = window.Application.Selection.Range;
+        if (currentSelection.Start !== currentSelection.End) {
+          // 只有在找到当前标题样式实例时才设置样式
+          window.Application.Selection.Style = styleName;
+          window.LogModule.addLog(`${styleName} 格式化完成`, "info");
+        }
+      }
+      
+      // 恢复原始选择
+      originalSelection.Select();
+    }
+
+    // 清理标题多余字符
+    if (removeNumbering) {
+      window.LogModule.addLog("开始清理标题多余字符", "info");
+      const paragraphs = doc.Paragraphs;
+      const count = paragraphs.Count;
+      
+      // 批量处理段落，减少文档操作次数
+      for (let i = 1; i <= count; i++) {
+        const para = paragraphs.Item(i);
+        const styleName = para.Style.NameLocal;
+        
+        // 检查是否为标题样式
+        if (styleName.indexOf("标题") === 0) {
+          const range = para.Range;
+          const text = range.Text;
+          
+          // 检查是否以数字或空格开头
+          if (/^\d|^\s/.test(text)) {
+            // 使用正则表达式处理文本：删除开头的数字、小数点、顿号和空格
+            const processedText = text.replace(/^[\d\.、\s]+/, "");
+            window.LogModule.addLog(`处理标题 ${i}：${text}->${processedText}`, "info");
+            
+            // 检查处理前后是否有变化
+            if (processedText !== text) {
+              // 保留段落标记（避免删除整个段落）
+              const end = range.End - 1;
+              if (end > range.Start) {
+                range.SetRange(range.Start, end);
+                range.Text = processedText;
+                processedCount++;
+              }
+            }
+          }
+        }
+      }
+      
+      // 显示处理结果
+      window.LogModule.addLog(`处理完成！共处理了 ${processedCount} 个标题。`, "info");
+    }
+
     const endTime = performance.now();
     const duration = ((endTime - startTime) / 1000).toFixed(2);
     window.LogModule.addLog(
-      "标题格式化完成，耗时：" + duration + "秒",
-      "success",
+      `标题格式化完成，耗时：${duration}秒`,
+      "success"
     );
     return true;
   } catch (error) {
-    window.LogModule.addLog("标题格式化失败: " + error.message, "error");
+    // 恢复原始选择
+    if (originalSelection) {
+      try {
+        originalSelection.Select();
+      } catch (e) {
+        // 忽略恢复选择时的错误
+      }
+    }
+    
+    window.LogModule.addLog(`标题格式化失败: ${error.message}`, "error");
     return false;
   }
 }
