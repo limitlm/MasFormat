@@ -321,7 +321,7 @@ function imageFormat() {
  * 正文格式化功能
  * @returns {boolean} 操作是否成功
  */
-function bodyTextFormat() {
+function bodyFormat() {
   const startTime = performance.now();
   const doc = window.Application.ActiveDocument;
   if (!doc) {
@@ -386,7 +386,7 @@ function executeAllFormats() {
     titleFormat();
     tableFormat();
     imageFormat();
-    bodyTextFormat();
+    bodyFormat();
     updateTOC();
 
     const endTime = performance.now();
@@ -408,7 +408,7 @@ const FormatUtils = {
   titleFormat,
   tableFormat,
   imageFormat,
-  bodyTextFormat,
+  bodyFormat,
   updateTOC,
   executeAllFormats,
 };
