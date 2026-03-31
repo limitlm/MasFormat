@@ -135,6 +135,7 @@ function titleFormat(options = {}) {
     return false;
   }
 
+  let originalSelection;
   try {
     // 显示确认弹窗
     if (showConfirm) {
@@ -150,7 +151,7 @@ function titleFormat(options = {}) {
     let processedCount = 0;
     
     // 先保存当前选择范围
-    const originalSelection = window.Application.Selection.Range;
+    originalSelection = window.Application.Selection.Range;
     window.LogModule.addLog("开始刷新标题格式", "warning");
     
     // 处理标题样式
