@@ -177,33 +177,49 @@ function titleFormat(options = {}) {
     // 清理标题多余字符
     if (removeNumbering) {
       window.LogModule.addLog("开始清理标题多余字符", "warning");
-      const paragraphs = doc.Paragraphs;
-      const count = paragraphs.Count;
       
-      // 批量处理段落，减少文档操作次数
-      for (let i = 1; i <= count; i++) {
-        const para = paragraphs.Item(i);
-        const styleName = para.Style.NameLocal;
+      // 遍历所有标题样式（标题1-9）
+      for (let i = 1; i <= 9; i++) {
+        const styleName = `标题 ${i}`;
         
-        // 检查是否为标题样式
-        if (styleName.indexOf("标题") === 0) {
+        // 使用Range.Find来查找所有使用该标题样式的段落
+        const findRange = doc.Content;
+        const find = findRange.Find;
+        
+        // 设置查找参数
+        find.ClearFormatting();
+        find.Style = styleName;
+        find.Forward = true;
+        find.Wrap = 1; // wdFindStop
+        find.Format = true;
+        
+        // 开始查找
+        while (find.Execute()) {
+          // 获取找到的段落
+          const para = findRange.Paragraphs.Item(1);
           const range = para.Range;
           const text = range.Text;
           
           // 检查是否以数字或空格开头
           if (/^\d|^\s/.test(text)) {
-            // 使用正则表达式处理文本：删除开头的数字、小数点、顿号和空格
-            const processedText = text.replace(/^[\d\.、\s]+/, "");
-            window.LogModule.addLog(`处理标题 ${i}：${text}->${processedText}`, "info");
+            // 获取段落标记前的内容长度
+            const contentLength = range.Text.length - 1;
             
-            // 检查处理前后是否有变化
-            if (processedText !== text) {
-              // 保留段落标记（避免删除整个段落）
-              const end = range.End - 1;
-              if (end > range.Start) {
-                range.SetRange(range.Start, end);
-                range.Text = processedText;
+            // 如果有内容需要处理
+            if (contentLength > 0) {
+              // 设置范围只包含内容，不包含段落标记
+              range.SetRange(range.Start, range.Start + contentLength);
+              const content = range.Text;
+              
+              // 处理文本
+              const processedContent = content.replace(/^[\d\.、\s]+/, "");
+              
+              // 检查是否有变化
+              if (processedContent !== content) {
+                range.Text = processedContent;
                 processedCount++;
+                // 输出修改日志
+                window.LogModule.addLog(`修改异常标题: "${content}"->"${processedContent}"`, "info");
               }
             }
           }
