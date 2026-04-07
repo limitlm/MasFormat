@@ -1,6 +1,38 @@
 // 格式化相关功能实现
 
 /**
+ * 查找目录信息
+ * @param {Object} doc - Word文档对象
+ * @returns {Object|null} 包含目录节索引和Range的对象，如果未找到则返回null
+ */
+function findTOCInfo(doc) {
+  try {
+    // 查找TOC域（Table of Contents）
+    if (doc.TablesOfContents && doc.TablesOfContents.Count > 0) {
+      try {
+        const toc = doc.TablesOfContents.Item(1);
+        const tocRange = toc.Range;
+        const sectionNum = tocRange.Information(2); // wdActiveEndSectionNumber
+        window.LogModule.addLog(`TOC域法成功：找到目录在第${sectionNum}节`, "info");
+        return {
+          sectionIndex: sectionNum,
+          range: tocRange
+        };
+      } catch (e) {
+        window.LogModule.addLog(`TOC域检测失败: ${e.message}`, "warning");
+      }
+    } else {
+      window.LogModule.addLog("未找到TOC域", "warning");
+    }
+
+    return null;
+  } catch (error) {
+    window.LogModule.addLog(`查找目录信息失败: ${error.message}`, "warning");
+    return null;
+  }
+}
+
+/**
  * 页面格式化功能
  * @description 设置文档为A4规格、2.5厘米页边距，配置页眉页脚和页码
  * @returns {boolean} 操作是否成功
@@ -43,7 +75,7 @@ function pageFormat() {
       section.PageSetup.HeaderDistance = 1.5 * CM_TO_POINT;
       section.PageSetup.FooterDistance = 1.75 * CM_TO_POINT;
     }
-    window.LogModule.addLog("页面基础设置完成：A4规格，2.5厘米页边距", "info");
+    window.LogModule.addLog("页面基础设置完成：A4规格，2.5厘米页边距，1.5厘米页眉距离，1.75厘米页脚距离", "info");
 
     // 步骤3：恢复所有节的原有页面方向
     for (let i = 1; i <= doc.Sections.Count; i++) {
@@ -51,57 +83,122 @@ function pageFormat() {
     }
     window.LogModule.addLog("页面方向恢复完成", "info");
 
-    // 步骤4：配置第一节页脚（公司名称+页码）
-    const section1 = doc.Sections.Item(1);
-    const footer = section1.Footers.Item(1);
+    // 步骤4：查找目录信息
+    let tocInfo = findTOCInfo(doc);
+    let hasTOC = !!tocInfo;
+    let startSectionIndex = 1;
     
-    // 清除原有页脚内容
-    footer.Range.Delete();
-    
-    // 设置首页不同
-    section1.PageSetup.DifferentFirstPageHeaderFooter = true;
-    section1.PageSetup.PageNumberStyle = PAGE_NUMBER_ARABIC;
-    
-    // 添加公司名称
-    const footerRange = footer.Range;
-    footerRange.Text = "重庆梅安森科技股份有限公司 编制";
-    footerRange.ParagraphFormat.Alignment = ALIGN_RIGHT;
-    
-    // 插入换行符和页码
-    footerRange.Collapse(1);
-    footerRange.Text = "\n";
-    footerRange.MoveEnd(1, -1);
-    const pageField = footerRange.Fields.Add(footerRange, -1, "PAGE", false);
-    pageField.Code.ParagraphFormat.Alignment = ALIGN_CENTER;
-    
-    window.LogModule.addLog("第一节页脚配置完成", "info");
-
-    // 步骤5：配置其他节（页眉页脚同前节，页码连续）
-    if (doc.Sections.Count > 1) {
-      for (let i = 2; i <= doc.Sections.Count; i++) {
+    if (hasTOC) {
+      // 步骤5：在目录所在页的前一页末尾插入分节符（下一页）
+      // 这样可以确保目录所在页的整页内容都在新节里
+      try {
+        let insertRange;
         try {
-          const section = doc.Sections.Item(i);
-          section.PageSetup.DifferentFirstPageHeaderFooter = false;
+          // 找到目录所在页的页码
+          const tocPageNum = tocInfo.range.Information(1); // wdActiveEndPageNumber
+          window.LogModule.addLog(`目录位于第${tocPageNum}页`, "info");
           
-          try {
-            section.Headers.Item(1).LinkToPrevious = true;
-            section.Footers.Item(1).LinkToPrevious = true;
-          } catch (e) {
-            window.LogModule.addLog(`警告：第${i}节页眉页脚同前节失败 - ${e.description}`, "warning");
+          if (tocPageNum > 1) {
+            // 目录不在第1页，跳转到前一页的末尾
+            insertRange = doc.Range(0, 0);
+            insertRange.GoTo(1, 1, tocPageNum - 1); // 跳转到前一页
+            insertRange.GoTo(3, 1); // wdGoToLine, wdGoToLast - 跳转到当前页的最后一行
+            window.LogModule.addLog(`定位到第${tocPageNum - 1}页末尾`, "info");
+          } else {
+            // 目录在第1页，直接在文档开头插入分节符
+            insertRange = doc.Range(0, 0);
+            window.LogModule.addLog("目录在第1页，在文档开头插入分节符", "info");
           }
-          
-          section.Footers.Item(1).PageNumbers.RestartNumberingAtSection = false;
         } catch (e) {
-          window.LogModule.addLog(`错误：处理第${i}节失败 - ${e.description}`, "error");
+          window.LogModule.addLog(`定位失败: ${e.message}，使用目录起始位置作为后备`, "warning");
+          // 后备方案：直接使用tocRange的起始位置
+          insertRange = doc.Range(tocInfo.range.Start, tocInfo.range.Start);
+        }
+        
+        // 在定位的位置插入分节符
+        insertRange.Collapse(0); // wdCollapseEnd - 在范围末尾插入
+        insertRange.InsertBreak(2); // wdSectionBreakNextPage
+        window.LogModule.addLog("已在目录页前一页末尾插入分节符", "info");
+        
+        // 插入分节符后，目录所在的节索引会增加1
+        startSectionIndex = tocInfo.sectionIndex + 1;
+        window.LogModule.addLog(`目录现在位于第${startSectionIndex}节`, "info");
+      } catch (e) {
+        window.LogModule.addLog(`插入分节符失败: ${e.message}`, "warning");
+        startSectionIndex = tocInfo.sectionIndex;
+      }
+    } else {
+      window.LogModule.addLog("未能找到目录，将从第1页开始配置连续页码", "info");
+    }
+    
+    if (doc.Sections.Count < startSectionIndex) {
+      window.LogModule.addLog("文档节数不足，无法找到起始节", "warning");
+    } else {
+      // 步骤6：配置起始节
+      const startSection = doc.Sections.Item(startSectionIndex);
+      const startFooter = startSection.Footers.Item(1);
+      
+      // 清除原有页脚内容
+      startFooter.Range.Delete();
+      
+      // 设置不使用首页不同
+      startSection.PageSetup.DifferentFirstPageHeaderFooter = false;
+      startSection.PageSetup.PageNumberStyle = PAGE_NUMBER_ARABIC;
+      
+      // 如果有目录，不链接到前节；如果没有目录，保持链接
+      if (hasTOC && startSectionIndex > 1) {
+        try {
+          startSection.Headers.Item(1).LinkToPrevious = false;
+          startSection.Footers.Item(1).LinkToPrevious = false;
+        } catch (e) {
+          window.LogModule.addLog(`警告：起始节页眉页脚断开同前节链接失败 - ${e.description}`, "warning");
         }
       }
-      window.LogModule.addLog("其他节配置完成", "info");
+      
+      // 添加公司名称
+      const startFooterRange = startFooter.Range;
+      startFooterRange.Text = "重庆梅安森科技股份有限公司 编制";
+      startFooterRange.ParagraphFormat.Alignment = ALIGN_RIGHT;
+      
+      // 插入换行符和页码
+      startFooterRange.Collapse(1);
+      startFooterRange.Text = "\n";
+      startFooterRange.MoveEnd(1, -1);
+      const startPageField = startFooterRange.Fields.Add(startFooterRange, -1, "PAGE", false);
+      startPageField.Code.ParagraphFormat.Alignment = ALIGN_CENTER;
+      
+      // 有目录时从1开始，无目录时保持连续
+      if (hasTOC) {
+        startFooter.PageNumbers.RestartNumberingAtSection = true;
+        startFooter.PageNumbers.StartingNumber = 1;
+      } else {
+        startFooter.PageNumbers.RestartNumberingAtSection = false;
+      }
+      
+      window.LogModule.addLog(`起始节（第${startSectionIndex}节）页眉页脚配置完成`, "info");
+      
+      // 步骤7：配置后续节
+      if (doc.Sections.Count > startSectionIndex) {
+        for (let i = startSectionIndex + 1; i <= doc.Sections.Count; i++) {
+          try {
+            const section = doc.Sections.Item(i);
+            section.PageSetup.DifferentFirstPageHeaderFooter = false;
+            
+            try {
+              section.Headers.Item(1).LinkToPrevious = true;
+              section.Footers.Item(1).LinkToPrevious = true;
+            } catch (e) {
+              window.LogModule.addLog(`警告：第${i}节页眉页脚同前节失败 - ${e.description}`, "warning");
+            }
+            
+            section.Footers.Item(1).PageNumbers.RestartNumberingAtSection = false;
+          } catch (e) {
+            window.LogModule.addLog(`错误：处理第${i}节失败 - ${e.description}`, "error");
+          }
+        }
+        window.LogModule.addLog("后续节配置完成", "info");
+      }
     }
-
-    // 步骤6：设置页码起始值
-    section1.Footers.Item(1).PageNumbers.RestartNumberingAtSection = true;
-    section1.Footers.Item(1).PageNumbers.StartingNumber = 0;
-    window.LogModule.addLog("页码起始设置完成", "info");
 
     // 完成
     const endTime = performance.now();
