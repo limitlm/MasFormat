@@ -38,6 +38,14 @@ function findTOCInfo(doc) {
  * @returns {boolean} 操作是否成功
  */
 function pageFormat() {
+  // ====== 配置选项 ======
+  const CM_TO_POINT = 28.3465;        // 厘米转磅的换算系数
+  const PAPER_A4 = 7;                  // Word API 中 A4 纸张对应的常量值
+  const ALIGN_CENTER = 1;              // 居中对齐
+  const ALIGN_RIGHT = 2;               // 右对齐
+  const PAGE_NUMBER_ARABIC = 0;        // 阿拉伯数字页码格式
+  // =======================
+
   const startTime = performance.now();
   const doc = window.Application.ActiveDocument;
   
@@ -48,13 +56,6 @@ function pageFormat() {
 
   try {
     window.LogModule.addLog("开始执行页面格式化", "warning");
-    
-    // 常量定义
-    const CM_TO_POINT = 28.3465;
-    const PAPER_A4 = 7;
-    const ALIGN_CENTER = 1;
-    const ALIGN_RIGHT = 2;
-    const PAGE_NUMBER_ARABIC = 0;
 
     // 步骤1：保存所有节的原有页面方向
     const originalOrientations = [];
@@ -213,18 +214,18 @@ function pageFormat() {
 
 /**
  * 标题格式化功能
- * @param {Object} options - 配置选项
- * @param {boolean} options.removeNumbering - 是否移除标题编号
- * @param {boolean} options.refreshStyles - 是否刷新标题样式
- * @param {boolean} options.showConfirm - 是否显示确认弹窗
+ * @description 用于格式化文档中的标题样式，包括9个标题样式，以及清理标题中的多余字符。
  * @returns {boolean} 操作是否成功
  */
-function titleFormat(options = {}) {
-  const {
-    removeNumbering = true,
-    refreshStyles = true,
-    showConfirm = true
-  } = options;
+function titleFormat() {
+  // ====== 功能开关 ======
+  // 是否移除标题编号（如："1. 标题" -> "标题"）
+  const removeNumbering = true;
+  // 是否刷新标题样式（重新应用标题1-9样式）
+  const refreshStyles = true;
+  // 是否显示确认弹窗
+  const showConfirm = true;
+  // =======================
 
   const doc = window.Application.ActiveDocument;
   if (!doc) {
@@ -360,6 +361,19 @@ function titleFormat(options = {}) {
  * @returns {boolean} 操作是否成功
  */
 function tableFormat() {
+  // ====== 配置选项 ======
+  const CONFIG = {
+    FONT_NAME: "宋体",           // 表格字体名称
+    FONT_SIZE: 10.5,            // 表格字体大小
+    DECIMAL_PLACES: 2,          // 价格列保留小数位数
+    PRICE_KEYWORDS: ["价", "元"], // 识别价格列的关键词
+  };
+  // Word API 常量定义
+  const WD_ALIGN_PARAGRAPH_CENTER = 1;       // 段落居中对齐
+  const WD_CELL_ALIGN_VERTICAL_CENTER = 1;   // 单元格垂直居中
+  const WD_AUTO_FIT_WINDOW = 2;              // 表格自适应窗口宽度
+  // =======================
+
   const startTime = performance.now();
   const doc = window.Application.ActiveDocument;
   if (!doc) {
@@ -369,18 +383,6 @@ function tableFormat() {
 
   try {
     window.LogModule.addLog("开始执行表格格式化", "warning");
-    
-    // 定义配置常量
-    const CONFIG = {
-      FONT_NAME: "宋体",
-      FONT_SIZE: 10.5,
-      DECIMAL_PLACES: 2,
-      PRICE_KEYWORDS: ["价", "元"],
-    };
-    
-    const WD_ALIGN_PARAGRAPH_CENTER = 1;
-    const WD_CELL_ALIGN_VERTICAL_CENTER = 1;
-    const WD_AUTO_FIT_WINDOW = 2;
 
     // 设置表格基本格式（字体、对齐方式、自适应）
     function setTableBasicFormat(table, tableIndex) {
