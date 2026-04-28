@@ -380,7 +380,7 @@ function tableFormat() {
     
     const WD_ALIGN_PARAGRAPH_CENTER = 1;
     const WD_CELL_ALIGN_VERTICAL_CENTER = 1;
-    const WD_AUTO_FIT_WINDOW = 0;
+    const WD_AUTO_FIT_WINDOW = 2;
 
     // 设置表格基本格式（字体、对齐方式、自适应）
     function setTableBasicFormat(table, tableIndex) {
@@ -402,34 +402,47 @@ function tableFormat() {
       range.Cells.VerticalAlignment = WD_CELL_ALIGN_VERTICAL_CENTER;
       window.LogModule.addLog(`  对齐方式: 水平居中、垂直居中`, "info");
       
-      // 3. 设置首行加粗 - 使用更安全的方式处理合并单元格
+      // 3. 设置首行加粗 - 使用多策略方案处理各种情况
+      window.LogModule.addLog(`  开始设置首行加粗...`, "info");
+      let success = false;
+      
+      // 策略1：直接使用Row.Range（简单情况）
       try {
-        let lastCol = 1;
-        let lastCell;
-        
-        for (let col = 1; col <= table.Columns.Count + 10; col++) {
-          try {
-            lastCell = table.Cell(1, col);
-            lastCol = col;
-          } catch (e) {
-            break;
+        if (table.Rows && table.Rows.Count > 0) {
+          const firstRow = table.Rows.Item(1);
+          if (firstRow && firstRow.Range) {
+            firstRow.Range.Font.Bold = true;
+            window.LogModule.addLog(`  首行加粗完成（策略1：直接使用Row.Range）`, "info");
+            success = true;
           }
-        }
-        
-        if (lastCell) {
-          const firstCell = table.Cell(1, 1);
-          const firstRowRange = doc.Range(firstCell.Range.Start, lastCell.Range.End);
-          firstRowRange.Font.Bold = true;
-          window.LogModule.addLog(`  首行加粗完成`, "info");
         }
       } catch (e) {
+        window.LogModule.addLog(`  策略1失败: ${e.message || e}`, "warning");
+      }
+      
+      // 策略2：逐个单元格设置（处理合并单元格）
+      if (!success) {
         try {
-          if (table.Rows.Count > 0) {
-            table.Rows.Item(1).Range.Font.Bold = true;
-            window.LogModule.addLog(`  首行加粗完成（备用方法）`, "info");
+          let cellCount = 0;
+          for (let col = 1; col <= table.Columns.Count + 20; col++) {
+            try {
+              const cell = table.Cell(1, col);
+              if (cell && cell.Range) {
+                cell.Range.Font.Bold = true;
+                cellCount++;
+              }
+            } catch (e) {
+              break;
+            }
           }
-        } catch (e2) {
-          window.LogModule.addLog(`  首行加粗失败: ${e2.message}`, "error");
+          if (cellCount > 0) {
+            window.LogModule.addLog(`  首行加粗完成（策略2：逐个单元格设置，共${cellCount}个）`, "info");
+            success = true;
+          } else {
+            window.LogModule.addLog(`  首行加粗失败：没有找到可设置的单元格`, "error");
+          }
+        } catch (e) {
+          window.LogModule.addLog(`  策略2失败: ${e.message || e}`, "error");
         }
       }
       
