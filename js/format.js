@@ -204,7 +204,7 @@ function pageFormat() {
     // 完成
     const endTime = performance.now();
     const duration = ((endTime - startTime) / 1000).toFixed(2);
-    window.LogModule.addLog(`页面格式化完成，耗时：${duration}秒`, "error");
+    window.LogModule.addLog(`页面格式化完成，耗时：${duration}秒`, "success");
     return true;
   } catch (error) {
     window.LogModule.addLog(`页面格式化失败: ${error.message}`, "error");
@@ -338,7 +338,7 @@ function titleFormat() {
 
     const endTime = performance.now();
     const duration = ((endTime - startTime) / 1000).toFixed(2);
-    window.LogModule.addLog(`标题格式化完成，耗时：${duration}秒`, "error");
+    window.LogModule.addLog(`标题格式化完成，耗时：${duration}秒`, "success");
     return true;
   } catch (error) {
     // 恢复原始选择
@@ -524,7 +524,7 @@ function tableFormat() {
       window.LogModule.addLog("文档中未找到表格！", "warning");
       const endTime = performance.now();
       const duration = ((endTime - startTime) / 1000).toFixed(2);
-      window.LogModule.addLog("表格格式化完成，耗时：" + duration + "秒", "error");
+      window.LogModule.addLog("表格格式化完成，耗时：" + duration + "秒", "success");
       return true;
     }
 
@@ -540,7 +540,7 @@ function tableFormat() {
     const endTime = performance.now();
     const duration = ((endTime - startTime) / 1000).toFixed(2);
     window.LogModule.addLog(`成功格式化了 ${tables.Count} 个表格！`, "success");
-    window.LogModule.addLog("表格格式化完成，耗时：" + duration + "秒", "error");
+    window.LogModule.addLog("表格格式化完成，耗时：" + duration + "秒", "success");
     return true;
   } catch (error) {
     window.LogModule.addLog("表格格式化失败: " + error.message, "error");
@@ -553,6 +553,12 @@ function tableFormat() {
  * @returns {boolean} 操作是否成功
  */
 function imageFormat() {
+  // ====== 配置选项 ======
+  const PICTURE_STYLE_NAME = "图片";
+  const MSO_PICTURE = 13;
+  const MIN_HEIGHT_POINTS = 50; // 排除大约2cm以内的签名图片
+  // =======================
+  
   const startTime = performance.now();
   const doc = window.Application.ActiveDocument;
   if (!doc) {
@@ -561,11 +567,70 @@ function imageFormat() {
   }
 
   try {
-    // 实现图片格式化逻辑
-    // 这里可以添加具体的图片格式化代码
+    window.LogModule.addLog("开始执行图片格式化", "warning");
+
+    // 记录统计数据
+    let convertedCount = 0,
+        styledCount = 0;
+
+    // 验证样式存在
+    let pictureStyleExists = false;
+    
+    try {
+      const style = doc.Styles.Item(PICTURE_STYLE_NAME);
+      if (style && style.NameLocal === PICTURE_STYLE_NAME) {
+        pictureStyleExists = true;
+        window.LogModule.addLog(`"图片"样式验证通过`, "info");
+      }
+    } catch (e) {
+      window.LogModule.addLog(`检查样式时发生错误: ${e.message}`, "warning");
+    }
+    
+    if (!pictureStyleExists) {
+      window.LogModule.addLog("文档中不存在'图片'样式，请手动创建！", "warning");
+      const endTime = performance.now();
+      const duration = ((endTime - startTime) / 1000).toFixed(2);
+      window.LogModule.addLog("图片格式化完成，耗时：" + duration + "秒", "success");
+      return false;
+    }
+
+    // 转换浮动图片为嵌入式
+    window.LogModule.addLog(`开始转换浮动图片，共 ${doc.Shapes.Count} 个形状`, "warning");
+    for (let i = doc.Shapes.Count; i >= 1; i--) {
+      try {
+        const shape = doc.Shapes.Item(i);
+        if (shape.Type === MSO_PICTURE && shape.Height >= MIN_HEIGHT_POINTS) {
+          shape.ConvertToInlineShape();
+          convertedCount++;
+        } else if (shape.Type === MSO_PICTURE && shape.Height < MIN_HEIGHT_POINTS) {
+          const pageNum = shape.Anchor.Information(1); // wdActiveEndPageNumber
+          window.LogModule.addLog(`疑似签名图片被排除，位于第${pageNum}页`, "info");
+        }
+      } catch (e) {
+        window.LogModule.addLog(`转换第${i}个形状失败: ${e.message}`, "warning");
+        continue;
+      }
+    }
+    window.LogModule.addLog(`浮动图片转换完成，共转换 ${convertedCount} 张`, "success");
+
+    // 应用图片样式
+    window.LogModule.addLog(`开始应用图片样式，共 ${doc.InlineShapes.Count} 张嵌入式图片`, "warning");
+    for (let i = 1; i <= doc.InlineShapes.Count; i++) {
+      try {
+        doc.InlineShapes.Item(i).Range.Style = PICTURE_STYLE_NAME;
+        styledCount++;
+      } catch (e) {
+        window.LogModule.addLog(`应用样式到第${i}张图片失败: ${e.message}`, "warning");
+        continue;
+      }
+    }
+    window.LogModule.addLog(`图片样式应用完成，共应用 ${styledCount} 张`, "success");
+
+    window.LogModule.addLog(`处理完成！转换：${convertedCount} 张，应用样式：${styledCount} 张`, "success");
+
     const endTime = performance.now();
     const duration = ((endTime - startTime) / 1000).toFixed(2);
-    window.LogModule.addLog("图片格式化完成，耗时：" + duration + "秒", "error");
+    window.LogModule.addLog("图片格式化完成，耗时：" + duration + "秒", "success");
     return true;
   } catch (error) {
     window.LogModule.addLog("图片格式化失败: " + error.message, "error");
@@ -590,7 +655,7 @@ function bodyFormat() {
     // 这里可以添加具体的正文格式化代码
     const endTime = performance.now();
     const duration = ((endTime - startTime) / 1000).toFixed(2);
-    window.LogModule.addLog("正文格式化完成，耗时：" + duration + "秒", "error");
+    window.LogModule.addLog("正文格式化完成，耗时：" + duration + "秒", "success");
     return true;
   } catch (error) {
     window.LogModule.addLog("正文格式化失败: " + error.message, "error");
@@ -615,7 +680,7 @@ function updateTOC() {
     // 这里可以添加具体的更新目录域代码
     const endTime = performance.now();
     const duration = ((endTime - startTime) / 1000).toFixed(2);
-    window.LogModule.addLog("目录域更新完成，耗时：" + duration + "秒", "error");
+    window.LogModule.addLog("目录域更新完成，耗时：" + duration + "秒", "success");
     return true;
   } catch (error) {
     window.LogModule.addLog("目录域更新失败: " + error.message, "error");
@@ -641,7 +706,7 @@ function executeAllFormats() {
 
     const endTime = performance.now();
     const duration = ((endTime - startTime) / 1000).toFixed(2);
-    window.LogModule.addLog("全部格式化操作完成，耗时：" + duration + "秒", "error");
+    window.LogModule.addLog("全部格式化操作完成，耗时：" + duration + "秒", "success");
     return true;
   } catch (error) {
     window.LogModule.addLog("全部执行失败: " + error.message, "error");
