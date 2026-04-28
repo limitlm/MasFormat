@@ -13,7 +13,7 @@ function findTOCInfo(doc) {
         const toc = doc.TablesOfContents.Item(1);
         const tocRange = toc.Range;
         const sectionNum = tocRange.Information(2); // wdActiveEndSectionNumber
-        window.LogModule.addLog(`TOC域法成功：找到目录在第${sectionNum}节`, "info");
+        window.LogModule.addLog(`TOC域法成功：找到目录在第${sectionNum}节`, "warning");
         return {
           sectionIndex: sectionNum,
           range: tocRange
@@ -75,13 +75,13 @@ function pageFormat() {
       section.PageSetup.HeaderDistance = 1.5 * CM_TO_POINT;
       section.PageSetup.FooterDistance = 1.75 * CM_TO_POINT;
     }
-    window.LogModule.addLog("页面基础设置完成：A4规格，2.5厘米页边距，1.5厘米页眉距离，1.75厘米页脚距离", "info");
+    window.LogModule.addLog("页面基础设置完成：A4规格，2.5厘米页边距，1.5厘米页眉距离，1.75厘米页脚距离", "success");
 
     // 步骤3：恢复所有节的原有页面方向
     for (let i = 1; i <= doc.Sections.Count; i++) {
       doc.Sections.Item(i).PageSetup.Orientation = originalOrientations[i - 1];
     }
-    window.LogModule.addLog("页面方向恢复完成", "info");
+    window.LogModule.addLog("页面方向恢复完成", "success");
 
     // 步骤4：查找目录信息
     let tocInfo = findTOCInfo(doc);
@@ -118,17 +118,17 @@ function pageFormat() {
         // 在定位的位置插入分节符
         insertRange.Collapse(0); // wdCollapseEnd - 在范围末尾插入
         insertRange.InsertBreak(2); // wdSectionBreakNextPage
-        window.LogModule.addLog("已在目录页前一页末尾插入分节符", "info");
+        window.LogModule.addLog("已在目录页前一页末尾插入分节符", "success");
         
         // 插入分节符后，目录所在的节索引会增加1
         startSectionIndex = tocInfo.sectionIndex + 1;
-        window.LogModule.addLog(`目录现在位于第${startSectionIndex}节`, "info");
+        window.LogModule.addLog(`目录现在位于第${startSectionIndex}节`, "warning");
       } catch (e) {
         window.LogModule.addLog(`插入分节符失败: ${e.message}`, "warning");
         startSectionIndex = tocInfo.sectionIndex;
       }
     } else {
-      window.LogModule.addLog("未能找到目录，将从第1页开始配置连续页码", "info");
+      window.LogModule.addLog("未能找到目录，将从第1页开始配置连续页码", "warning");
     }
     
     if (doc.Sections.Count < startSectionIndex) {
@@ -175,7 +175,7 @@ function pageFormat() {
         startFooter.PageNumbers.RestartNumberingAtSection = false;
       }
       
-      window.LogModule.addLog(`起始节（第${startSectionIndex}节）页眉页脚配置完成`, "info");
+      window.LogModule.addLog(`起始节（第${startSectionIndex}节）页眉页脚配置完成`, "success");
       
       // 步骤7：配置后续节
       if (doc.Sections.Count > startSectionIndex) {
@@ -196,14 +196,14 @@ function pageFormat() {
             window.LogModule.addLog(`错误：处理第${i}节失败 - ${e.description}`, "error");
           }
         }
-        window.LogModule.addLog("后续节配置完成", "info");
+        window.LogModule.addLog("后续节配置完成", "success");
       }
     }
 
     // 完成
     const endTime = performance.now();
     const duration = ((endTime - startTime) / 1000).toFixed(2);
-    window.LogModule.addLog(`页面格式化完成，耗时：${duration}秒`, "success");
+    window.LogModule.addLog(`页面格式化完成，耗时：${duration}秒`, "error");
     return true;
   } catch (error) {
     window.LogModule.addLog(`页面格式化失败: ${error.message}`, "error");
@@ -268,7 +268,6 @@ function titleFormat(options = {}) {
         }
       }
       
-
     }
 
     // 清理标题多余字符
@@ -324,7 +323,7 @@ function titleFormat(options = {}) {
       }
       
       // 显示处理结果
-      window.LogModule.addLog(`处理完成！共处理了 ${processedCount} 个标题。`, "info");
+      window.LogModule.addLog(`处理完成！共处理了 ${processedCount} 个标题。`, "success");
     }
 
     // 恢复原始选择
@@ -338,10 +337,7 @@ function titleFormat(options = {}) {
 
     const endTime = performance.now();
     const duration = ((endTime - startTime) / 1000).toFixed(2);
-    window.LogModule.addLog(
-      `标题格式化完成，耗时：${duration}秒`,
-      "success"
-    );
+    window.LogModule.addLog(`标题格式化完成，耗时：${duration}秒`, "error");
     return true;
   } catch (error) {
     // 恢复原始选择
@@ -360,6 +356,7 @@ function titleFormat(options = {}) {
 
 /**
  * 表格格式化功能
+ * @description 统一字体、首行加粗、单元格居中、表格自适应窗口宽度、识别价格列
  * @returns {boolean} 操作是否成功
  */
 function tableFormat() {
@@ -371,14 +368,164 @@ function tableFormat() {
   }
 
   try {
-    // 实现表格格式化逻辑
-    // 这里可以添加具体的表格格式化代码
+    window.LogModule.addLog("开始执行表格格式化", "warning");
+    
+    // 定义配置常量
+    const CONFIG = {
+      FONT_NAME: "宋体",
+      FONT_SIZE: 10.5,
+      DECIMAL_PLACES: 2,
+      PRICE_KEYWORDS: ["价", "元"],
+    };
+    
+    const WD_ALIGN_PARAGRAPH_CENTER = 1;
+    const WD_CELL_ALIGN_VERTICAL_CENTER = 1;
+    const WD_AUTO_FIT_WINDOW = 0;
+
+    // 设置表格基本格式（字体、对齐方式、自适应）
+    function setTableBasicFormat(table, tableIndex) {
+      if (!table) return;
+      
+      window.LogModule.addLog(`开始处理第${tableIndex}个表格基本格式`, "warning");
+      
+      const range = table.Range;
+      
+      // 1. 统一设置字体和字号
+      const originalFontName = range.Font.Name;
+      const originalFontSize = range.Font.Size;
+      range.Font.Name = CONFIG.FONT_NAME;
+      range.Font.Size = CONFIG.FONT_SIZE;
+      window.LogModule.addLog(`  字体设置: "${originalFontName}"->"${CONFIG.FONT_NAME}", ${originalFontSize}pt->${CONFIG.FONT_SIZE}pt`, "info");
+      
+      // 2. 设置所有单元格的对齐方式
+      range.ParagraphFormat.Alignment = WD_ALIGN_PARAGRAPH_CENTER;
+      range.Cells.VerticalAlignment = WD_CELL_ALIGN_VERTICAL_CENTER;
+      window.LogModule.addLog(`  对齐方式: 水平居中、垂直居中`, "info");
+      
+      // 3. 设置首行加粗 - 使用更安全的方式处理合并单元格
+      try {
+        let lastCol = 1;
+        let lastCell;
+        
+        for (let col = 1; col <= table.Columns.Count + 10; col++) {
+          try {
+            lastCell = table.Cell(1, col);
+            lastCol = col;
+          } catch (e) {
+            break;
+          }
+        }
+        
+        if (lastCell) {
+          const firstCell = table.Cell(1, 1);
+          const firstRowRange = doc.Range(firstCell.Range.Start, lastCell.Range.End);
+          firstRowRange.Font.Bold = true;
+          window.LogModule.addLog(`  首行加粗完成`, "info");
+        }
+      } catch (e) {
+        try {
+          if (table.Rows.Count > 0) {
+            table.Rows.Item(1).Range.Font.Bold = true;
+            window.LogModule.addLog(`  首行加粗完成（备用方法）`, "info");
+          }
+        } catch (e2) {
+          window.LogModule.addLog(`  首行加粗失败: ${e2.message}`, "error");
+        }
+      }
+      
+      // 4. 设置表格自适应窗口
+      table.AutoFitBehavior(WD_AUTO_FIT_WINDOW);
+      window.LogModule.addLog(`  表格自适应窗口设置完成`, "info");
+      window.LogModule.addLog(`第${tableIndex}个表格基本格式处理完成`, "success");
+    }
+
+    // 识别并处理价格列
+    function processPriceColumns(table, tableIndex) {
+      if (!table || table.Rows.Count === 0 || table.Columns.Count === 0) return;
+
+      window.LogModule.addLog(`开始处理第${tableIndex}个表格价格列`, "warning");
+
+      const priceColumns = [];
+      
+      for (let col = 1; col <= table.Columns.Count; col++) {
+        try {
+          const cell = table.Cell(1, col);
+          const headerText = cell.Range.Text.replace(/\r\a/g, "");
+          
+          const isPriceColumn = CONFIG.PRICE_KEYWORDS.some(
+            (keyword) => headerText.indexOf(keyword) > -1
+          );
+          
+          if (isPriceColumn) {
+            priceColumns.push(col);
+            window.LogModule.addLog(`  识别到价格列: 第${col}列（表头: "${headerText}"）`, "info");
+          }
+          
+          const mergeArea = cell.MergeArea;
+          if (mergeArea && mergeArea.Columns && mergeArea.Columns.Count > 1) {
+            col += mergeArea.Columns.Count - 1;
+          }
+        } catch (e) {
+          continue;
+        }
+      }
+      
+      if (priceColumns.length === 0) {
+        window.LogModule.addLog(`  未识别到价格列`, "warning");
+        return;
+      }
+
+      let modifiedCellCount = 0;
+      
+      for (let row = 2; row <= table.Rows.Count; row++) {
+        for (let i = 0; i < priceColumns.length; i++) {
+          const col = priceColumns[i];
+          try {
+            const cell = table.Cell(row, col);
+            const cellText = cell.Range.Text.replace(/\r\a/g, "");
+            
+            if (cellText.match(/\d/)) {
+              const numValue = parseFloat(cellText.replace(/[^\d.-]/g, ""));
+              if (!isNaN(numValue)) {
+                const newValue = numValue.toFixed(CONFIG.DECIMAL_PLACES);
+                if (cellText !== newValue) {
+                  cell.Range.Text = newValue;
+                  window.LogModule.addLog(`  修改单元格[${row},${col}]: "${cellText}"->"${newValue}"`, "info");
+                  modifiedCellCount++;
+                }
+              }
+            }
+          } catch (e) {
+            continue;
+          }
+        }
+      }
+      
+      window.LogModule.addLog(`第${tableIndex}个表格价格列处理完成，共修改 ${modifiedCellCount} 个单元格`, "success");
+    }
+
+    const tables = doc.Tables;
+    if (tables.Count === 0) {
+      window.LogModule.addLog("文档中未找到表格！", "warning");
+      const endTime = performance.now();
+      const duration = ((endTime - startTime) / 1000).toFixed(2);
+      window.LogModule.addLog("表格格式化完成，耗时：" + duration + "秒", "error");
+      return true;
+    }
+
+    window.LogModule.addLog(`文档中共找到 ${tables.Count} 个表格`, "warning");
+
+    for (let i = 1; i <= tables.Count; i++) {
+      const table = tables.Item(i);
+      window.LogModule.addLog(`正在处理第${i}个表格（共${tables.Count}个）`, "warning");
+      setTableBasicFormat(table, i);
+      processPriceColumns(table, i);
+    }
+
     const endTime = performance.now();
     const duration = ((endTime - startTime) / 1000).toFixed(2);
-    window.LogModule.addLog(
-      "表格格式化完成，耗时：" + duration + "秒",
-      "success",
-    );
+    window.LogModule.addLog(`成功格式化了 ${tables.Count} 个表格！`, "success");
+    window.LogModule.addLog("表格格式化完成，耗时：" + duration + "秒", "error");
     return true;
   } catch (error) {
     window.LogModule.addLog("表格格式化失败: " + error.message, "error");
@@ -403,10 +550,7 @@ function imageFormat() {
     // 这里可以添加具体的图片格式化代码
     const endTime = performance.now();
     const duration = ((endTime - startTime) / 1000).toFixed(2);
-    window.LogModule.addLog(
-      "图片格式化完成，耗时：" + duration + "秒",
-      "success",
-    );
+    window.LogModule.addLog("图片格式化完成，耗时：" + duration + "秒", "error");
     return true;
   } catch (error) {
     window.LogModule.addLog("图片格式化失败: " + error.message, "error");
@@ -431,10 +575,7 @@ function bodyFormat() {
     // 这里可以添加具体的正文格式化代码
     const endTime = performance.now();
     const duration = ((endTime - startTime) / 1000).toFixed(2);
-    window.LogModule.addLog(
-      "正文格式化完成，耗时：" + duration + "秒",
-      "success",
-    );
+    window.LogModule.addLog("正文格式化完成，耗时：" + duration + "秒", "error");
     return true;
   } catch (error) {
     window.LogModule.addLog("正文格式化失败: " + error.message, "error");
@@ -459,10 +600,7 @@ function updateTOC() {
     // 这里可以添加具体的更新目录域代码
     const endTime = performance.now();
     const duration = ((endTime - startTime) / 1000).toFixed(2);
-    window.LogModule.addLog(
-      "目录域更新完成，耗时：" + duration + "秒",
-      "success",
-    );
+    window.LogModule.addLog("目录域更新完成，耗时：" + duration + "秒", "error");
     return true;
   } catch (error) {
     window.LogModule.addLog("目录域更新失败: " + error.message, "error");
@@ -488,10 +626,7 @@ function executeAllFormats() {
 
     const endTime = performance.now();
     const duration = ((endTime - startTime) / 1000).toFixed(2);
-    window.LogModule.addLog(
-      "全部格式化操作完成，耗时：" + duration + "秒",
-      "success",
-    );
+    window.LogModule.addLog("全部格式化操作完成，耗时：" + duration + "秒", "error");
     return true;
   } catch (error) {
     window.LogModule.addLog("全部执行失败: " + error.message, "error");
