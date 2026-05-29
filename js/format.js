@@ -257,6 +257,9 @@ function titleFormat() {
       for (let i = 1; i <= 9; i++) {
         const styleName = `标题 ${i}`;
         
+        // 重置选择范围，防止上一次选择影响当前操作
+        window.Application.Selection.Collapse();
+        
         // 尝试选择所有当前标题样式实例
         doc.SelectStyleInstance(styleName);
         
@@ -366,7 +369,7 @@ function tableFormat() {
     FONT_NAME: "宋体",           // 表格字体名称
     FONT_SIZE: 10.5,            // 表格字体大小
     DECIMAL_PLACES: 2,          // 价格列保留小数位数
-    PRICE_KEYWORDS: ["价", "元"], // 识别价格列的关键词
+    PRICE_KEYWORDS: ["单价","总价","元"], // 识别价格列的关键词
   };
   // Word API 常量定义
   const WD_ALIGN_PARAGRAPH_CENTER = 1;       // 段落居中对齐
@@ -462,26 +465,31 @@ function tableFormat() {
 
       const priceColumns = [];
       
-      for (let col = 1; col <= table.Columns.Count; col++) {
-        try {
-          const cell = table.Cell(1, col);
-          const headerText = cell.Range.Text.replace(/\r\a/g, "");
-          
-          const isPriceColumn = CONFIG.PRICE_KEYWORDS.some(
-            (keyword) => headerText.indexOf(keyword) > -1
-          );
-          
-          if (isPriceColumn) {
-            priceColumns.push(col);
-            window.LogModule.addLog(`  识别到价格列: 第${col}列（表头: "${headerText}"）`, "info");
+      const foundColumns = new Set();
+      
+      for (let row = 1; row <= 2 && row <= table.Rows.Count; row++) {
+        for (let col = 1; col <= table.Columns.Count; col++) {
+          try {
+            const cell = table.Cell(row, col);
+            const cellText = cell.Range.Text.replace(/\r\a/g, "");
+            
+            const isPriceColumn = CONFIG.PRICE_KEYWORDS.some(
+              (keyword) => cellText.indexOf(keyword) > -1
+            );
+            
+            if (isPriceColumn && !foundColumns.has(col)) {
+              foundColumns.add(col);
+              priceColumns.push(col);
+              window.LogModule.addLog(`  识别到价格列: 第${col}列（表头行${row}: "${cellText}"）`, "info");
+            }
+            
+            const mergeArea = cell.MergeArea;
+            if (mergeArea && mergeArea.Columns && mergeArea.Columns.Count > 1) {
+              col += mergeArea.Columns.Count - 1;
+            }
+          } catch (e) {
+            continue;
           }
-          
-          const mergeArea = cell.MergeArea;
-          if (mergeArea && mergeArea.Columns && mergeArea.Columns.Count > 1) {
-            col += mergeArea.Columns.Count - 1;
-          }
-        } catch (e) {
-          continue;
         }
       }
       
