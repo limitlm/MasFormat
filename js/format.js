@@ -565,6 +565,9 @@ function imageFormat() {
   const PICTURE_STYLE_NAME = "图片";
   const MSO_PICTURE = 13;
   const MIN_HEIGHT_POINTS = 50; // 排除大约2cm以内的签名图片
+  const MAX_HEIGHT_CM = 21;
+  const MAX_WIDTH_CM = 16;
+  const CM_TO_POINT = 28.3465; // 厘米转磅的换算系数
   // =======================
   
   const startTime = performance.now();
@@ -579,7 +582,8 @@ function imageFormat() {
 
     // 记录统计数据
     let convertedCount = 0,
-        styledCount = 0;
+        styledCount = 0,
+        resizedCount = 0;
 
     // 验证样式存在
     let pictureStyleExists = false;
@@ -622,19 +626,66 @@ function imageFormat() {
     window.LogModule.addLog(`浮动图片转换完成，共转换 ${convertedCount} 张`, "success");
 
     // 应用图片样式
-    window.LogModule.addLog(`开始应用图片样式，共 ${doc.InlineShapes.Count} 张嵌入式图片`, "warning");
+    window.LogModule.addLog(`开始验证图片尺寸并应用图片样式，共 ${doc.InlineShapes.Count} 张嵌入式图片`, "warning");
+    const maxLandscapeLongSide = MAX_WIDTH_CM * CM_TO_POINT;     // 横向图片长边限制
+    const maxPortraitLongSide = MAX_HEIGHT_CM * CM_TO_POINT;    // 竖向图片长边限制
+    const EPSILON = 0.1;  // 允许的微小误差阈值（磅），避免精度问题
+    
     for (let i = 1; i <= doc.InlineShapes.Count; i++) {
       try {
-        doc.InlineShapes.Item(i).Range.Style = PICTURE_STYLE_NAME;
+        const inlineShape = doc.InlineShapes.Item(i);
+        const pageNum = inlineShape.Range.Information(1); // wdActiveEndPageNumber
+        
+        // 转换为Shape获取旋转角度
+        const shape = inlineShape.ConvertToShape();
+        const rotation = shape.Rotation;
+        const shapeWidth = shape.Width;
+        const shapeHeight = shape.Height;
+        
+        // 判断视觉方向
+        let isLandscape;
+        if (rotation === 90 || rotation === 270) {
+          // 旋转90/270度，视觉方向与原始相反
+          isLandscape = shapeHeight > shapeWidth;
+        } else {
+          // 0/180度，视觉方向与原始相同
+          isLandscape = shapeWidth > shapeHeight;
+        }
+        const directionText = isLandscape ? "横向" : "竖向";
+        const maxLongSide = isLandscape ? maxLandscapeLongSide : maxPortraitLongSide;
+        
+        // 找出当前长边
+        const currentLongSide = Math.max(shapeWidth, shapeHeight);
+        
+        // 检查是否需要调整（增加误差阈值）
+        if (currentLongSide > maxLongSide + EPSILON) {
+          shape.LockAspectRatio = -1; // msoTrue
+          
+          // 直接设置长边为限制值，让Word自动处理短边
+          if (shapeWidth >= shapeHeight) {
+            // 原始宽度是长边
+            shape.Width = maxLongSide;
+          } else {
+            // 原始高度是长边
+            shape.Height = maxLongSide;
+          }
+          
+          const origLongCm = (currentLongSide / CM_TO_POINT).toFixed(2);
+          const newLongCm = (maxLongSide / CM_TO_POINT).toFixed(2);
+          window.LogModule.addLog(`第${pageNum}页第${i}张${directionText}图片，长边${origLongCm}cm→${newLongCm}cm`, "info");
+          resizedCount++;
+        }
+        
+        // 转换回嵌入式图片并应用样式
+        const newInlineShape = shape.ConvertToInlineShape();
+        newInlineShape.Range.Style = PICTURE_STYLE_NAME;
         styledCount++;
       } catch (e) {
         window.LogModule.addLog(`应用样式到第${i}张图片失败: ${e.message}`, "warning");
         continue;
       }
     }
-    window.LogModule.addLog(`图片样式应用完成，共应用 ${styledCount} 张`, "success");
-
-    window.LogModule.addLog(`处理完成！转换：${convertedCount} 张，应用样式：${styledCount} 张`, "success");
+    window.LogModule.addLog(`共调整尺寸 ${resizedCount} 张，共应用样式 ${styledCount} 张`, "success");
 
     const endTime = performance.now();
     const duration = ((endTime - startTime) / 1000).toFixed(2);
