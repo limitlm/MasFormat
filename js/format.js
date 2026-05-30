@@ -678,8 +678,13 @@ function imageFormat() {
         
         // 转换回嵌入式图片并应用样式
         const newInlineShape = shape.ConvertToInlineShape();
-        newInlineShape.Range.Style = PICTURE_STYLE_NAME;
-        styledCount++;
+        
+        // 检查当前样式，避免重复应用（优化性能）
+        const currentStyleName = newInlineShape.Range.Style.NameLocal;
+        if (currentStyleName !== PICTURE_STYLE_NAME) {
+          newInlineShape.Range.Style = PICTURE_STYLE_NAME;
+          styledCount++;
+        }
       } catch (e) {
         window.LogModule.addLog(`应用样式到第${i}张图片失败: ${e.message}`, "warning");
         continue;
