@@ -627,63 +627,66 @@ function imageFormat() {
 
     // 应用图片样式
     window.LogModule.addLog(`开始验证图片尺寸并应用图片样式，共 ${doc.InlineShapes.Count} 张嵌入式图片`, "warning");
-    const maxLandscapeLongSide = MAX_WIDTH_CM * CM_TO_POINT;     // 横向图片长边限制
-    const maxPortraitLongSide = MAX_HEIGHT_CM * CM_TO_POINT;    // 竖向图片长边限制
-    const EPSILON = 0.1;  // 允许的微小误差阈值（磅），避免精度问题
+    const maxLandscapeLongSide = MAX_WIDTH_CM * CM_TO_POINT;
+    const maxPortraitLongSide = MAX_HEIGHT_CM * CM_TO_POINT;
+    const EPSILON = 2.83465;
     
-    for (let i = 1; i <= doc.InlineShapes.Count; i++) {
+    for (let i = doc.InlineShapes.Count; i >= 1; i--) {
       try {
         const inlineShape = doc.InlineShapes.Item(i);
-        const pageNum = inlineShape.Range.Information(1); // wdActiveEndPageNumber
+        const pageNum = inlineShape.Range.Information(1);
         
-        // 转换为Shape获取旋转角度
-        const shape = inlineShape.ConvertToShape();
-        const rotation = shape.Rotation;
-        const shapeWidth = shape.Width;
-        const shapeHeight = shape.Height;
+        // 直接从InlineShape获取尺寸，无需转换
+        const inlineWidth = inlineShape.Width;
+        const inlineHeight = inlineShape.Height;
+        const currentLongSide = Math.max(inlineWidth, inlineHeight);
         
-        // 判断视觉方向
-        let isLandscape;
-        if (rotation === 90 || rotation === 270) {
-          // 旋转90/270度，视觉方向与原始相反
-          isLandscape = shapeHeight > shapeWidth;
-        } else {
-          // 0/180度，视觉方向与原始相同
-          isLandscape = shapeWidth > shapeHeight;
-        }
-        const directionText = isLandscape ? "横向" : "竖向";
-        const maxLongSide = isLandscape ? maxLandscapeLongSide : maxPortraitLongSide;
+        // 判断是否需要调整
+        const isInlineLandscape = inlineWidth >= inlineHeight;
+        const maxLongSide = isInlineLandscape ? maxLandscapeLongSide : maxPortraitLongSide;
+        const needsResize = currentLongSide > maxLongSide + EPSILON;
         
-        // 找出当前长边
-        const currentLongSide = Math.max(shapeWidth, shapeHeight);
-        
-        // 检查是否需要调整（增加误差阈值）
-        if (currentLongSide > maxLongSide + EPSILON) {
-          shape.LockAspectRatio = -1; // msoTrue
+        // 仅对需要调整的图片执行转换操作
+        if (needsResize) {
+          const shape = inlineShape.ConvertToShape();
+          const rotation = shape.Rotation;
           
-          // 直接设置长边为限制值，让Word自动处理短边
-          if (shapeWidth >= shapeHeight) {
-            // 原始宽度是长边
-            shape.Width = maxLongSide;
+          let isLandscape;
+          if (rotation === 90 || rotation === 270) {
+            isLandscape = shape.Height > shape.Width;
           } else {
-            // 原始高度是长边
-            shape.Height = maxLongSide;
+            isLandscape = shape.Width > shape.Height;
+          }
+          const directionText = isLandscape ? "横向" : "竖向";
+          const effectiveMaxLongSide = isLandscape ? maxLandscapeLongSide : maxPortraitLongSide;
+          const effectiveCurrentLongSide = Math.max(shape.Width, shape.Height);
+          
+          shape.LockAspectRatio = -1;
+          
+          if (shape.Width >= shape.Height) {
+            shape.Width = effectiveMaxLongSide;
+          } else {
+            shape.Height = effectiveMaxLongSide;
           }
           
-          const origLongCm = (currentLongSide / CM_TO_POINT).toFixed(2);
-          const newLongCm = (maxLongSide / CM_TO_POINT).toFixed(2);
+          const origLongCm = (effectiveCurrentLongSide / CM_TO_POINT).toFixed(2);
+          const newLongCm = (effectiveMaxLongSide / CM_TO_POINT).toFixed(2);
           window.LogModule.addLog(`第${pageNum}页第${i}张${directionText}图片，长边${origLongCm}cm→${newLongCm}cm`, "info");
           resizedCount++;
-        }
-        
-        // 转换回嵌入式图片并应用样式
-        const newInlineShape = shape.ConvertToInlineShape();
-        
-        // 检查当前样式，避免重复应用（优化性能）
-        const currentStyleName = newInlineShape.Range.Style.NameLocal;
-        if (currentStyleName !== PICTURE_STYLE_NAME) {
-          newInlineShape.Range.Style = PICTURE_STYLE_NAME;
-          styledCount++;
+          
+          const newInlineShape = shape.ConvertToInlineShape();
+          const currentStyleName = newInlineShape.Range.Style.NameLocal;
+          if (currentStyleName !== PICTURE_STYLE_NAME) {
+            newInlineShape.Range.Style = PICTURE_STYLE_NAME;
+            styledCount++;
+          }
+        } else {
+          // 尺寸合规，直接应用样式，无需转换
+          const currentStyleName = inlineShape.Range.Style.NameLocal;
+          if (currentStyleName !== PICTURE_STYLE_NAME) {
+            inlineShape.Range.Style = PICTURE_STYLE_NAME;
+            styledCount++;
+          }
         }
       } catch (e) {
         window.LogModule.addLog(`应用样式到第${i}张图片失败: ${e.message}`, "warning");
