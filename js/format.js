@@ -39,7 +39,6 @@ function findTOCInfo(doc) {
  */
 function pageFormat() {
   // ====== 配置选项 ======
-  const CM_TO_POINT = 28.3465;        // 厘米转磅的换算系数
   const PAPER_A4 = 7;                  // Word API 中 A4 纸张对应的常量值
   const ALIGN_CENTER = 1;              // 居中对齐
   const ALIGN_RIGHT = 2;               // 右对齐
@@ -69,12 +68,12 @@ function pageFormat() {
     for (let i = 1; i <= doc.Sections.Count; i++) {
       const section = doc.Sections.Item(i);
       section.PageSetup.PaperSize = PAPER_A4;
-      section.PageSetup.LeftMargin = 2.5 * CM_TO_POINT;
-      section.PageSetup.RightMargin = 2.5 * CM_TO_POINT;
-      section.PageSetup.TopMargin = 2.5 * CM_TO_POINT;
-      section.PageSetup.BottomMargin = 2.5 * CM_TO_POINT;
-      section.PageSetup.HeaderDistance = 1.5 * CM_TO_POINT;
-      section.PageSetup.FooterDistance = 1.75 * CM_TO_POINT;
+      section.PageSetup.LeftMargin = window.Application.CentimetersToPoints(2.5);
+      section.PageSetup.RightMargin = window.Application.CentimetersToPoints(2.5);
+      section.PageSetup.TopMargin = window.Application.CentimetersToPoints(2.5);
+      section.PageSetup.BottomMargin = window.Application.CentimetersToPoints(2.5);
+      section.PageSetup.HeaderDistance = window.Application.CentimetersToPoints(1.5);
+      section.PageSetup.FooterDistance = window.Application.CentimetersToPoints(1.75);
     }
     window.LogModule.addLog("页面基础设置完成：A4规格，2.5厘米页边距，1.5厘米页眉距离，1.75厘米页脚距离", "success");
 
@@ -567,7 +566,6 @@ function imageFormat() {
   const MIN_HEIGHT_POINTS = 50; // 排除大约2cm以内的签名图片
   const MAX_HEIGHT_CM = 21;
   const MAX_WIDTH_CM = 16;
-  const CM_TO_POINT = 28.3465; // 厘米转磅的换算系数
   // =======================
   
   const startTime = performance.now();
@@ -627,8 +625,8 @@ function imageFormat() {
 
     // 应用图片样式
     window.LogModule.addLog(`开始验证图片尺寸并应用图片样式，共 ${doc.InlineShapes.Count} 张嵌入式图片`, "warning");
-    const maxLandscapeLongSide = MAX_WIDTH_CM * CM_TO_POINT;
-    const maxPortraitLongSide = MAX_HEIGHT_CM * CM_TO_POINT;
+    const maxLandscapeLongSide = window.Application.CentimetersToPoints(MAX_WIDTH_CM);
+    const maxPortraitLongSide = window.Application.CentimetersToPoints(MAX_HEIGHT_CM);
     const EPSILON = 2.83465;
     
     for (let i = doc.InlineShapes.Count; i >= 1; i--) {
@@ -669,8 +667,8 @@ function imageFormat() {
             shape.Height = effectiveMaxLongSide;
           }
           
-          const origLongCm = (effectiveCurrentLongSide / CM_TO_POINT).toFixed(2);
-          const newLongCm = (effectiveMaxLongSide / CM_TO_POINT).toFixed(2);
+          const origLongCm = window.Application.PointsToCentimeters(effectiveCurrentLongSide).toFixed(2);
+          const newLongCm = window.Application.PointsToCentimeters(effectiveMaxLongSide).toFixed(2);
           window.LogModule.addLog(`第${pageNum}页第${i}张${directionText}图片，长边${origLongCm}cm→${newLongCm}cm`, "info");
           resizedCount++;
           
