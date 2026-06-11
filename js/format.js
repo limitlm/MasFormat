@@ -471,7 +471,7 @@ function tableFormat() {
         for (let col = 1; col <= table.Columns.Count; col++) {
           try {
             const cell = table.Cell(row, col);
-            const cellText = cell.Range.Text.replace(/\r\a/g, "");
+            const cellText = cell.Range.Text.replace(/[\r\n\a\x00-\x1F]/g, "");
             
             const isPriceColumn = CONFIG.PRICE_KEYWORDS.some(
               (keyword) => cellText.indexOf(keyword) > -1
@@ -505,7 +505,7 @@ function tableFormat() {
           const col = priceColumns[i];
           try {
             const cell = table.Cell(row, col);
-            const cellText = cell.Range.Text.replace(/\r\a/g, "");
+            const cellText = cell.Range.Text.replace(/[\r\n\a\x00-\x1F]/g, "");
             
             if (cellText.match(/\d/)) {
               const numValue = parseFloat(cellText.replace(/[^\d.-]/g, ""));
