@@ -564,8 +564,8 @@ function imageFormat() {
   const PICTURE_STYLE_NAME = "图片";
   const MSO_PICTURE = 13;
   const MIN_HEIGHT_POINTS = 50; // 排除大约2cm以内的签名图片
-  const MAX_HEIGHT_CM = 21;
-  const MAX_WIDTH_CM = 16;
+  const MAX_LONG_CM = 21; // 图片长边最大限制(厘米)
+  const MAX_SHORT_CM = 16; // 图片短边最大限制(厘米)
   // =======================
   
   const startTime = performance.now();
@@ -625,66 +625,67 @@ function imageFormat() {
 
     // 应用图片样式
     window.LogModule.addLog(`开始验证图片尺寸并应用图片样式，共 ${doc.InlineShapes.Count} 张嵌入式图片`, "warning");
-    const maxLandscapeLongSide = window.Application.CentimetersToPoints(MAX_WIDTH_CM);
-    const maxPortraitLongSide = window.Application.CentimetersToPoints(MAX_HEIGHT_CM);
-    const EPSILON = 2.83465;
+    
+    const MAX_LONG = window.Application.CentimetersToPoints(MAX_LONG_CM);
+    const MAX_SHORT = window.Application.CentimetersToPoints(MAX_SHORT_CM);
+    const MAX_LONG_CM_STR = MAX_LONG_CM.toString();
+    const MAX_SHORT_CM_STR = MAX_SHORT_CM.toString();
     
     for (let i = doc.InlineShapes.Count; i >= 1; i--) {
       try {
-        const inlineShape = doc.InlineShapes.Item(i);
-        const pageNum = inlineShape.Range.Information(1);
+        const img = doc.InlineShapes.Item(i);
+        const pageNum = img.Range.Information(1);
+        const w = img.Width;
+        const h = img.Height;
+        const long = Math.max(w, h);
+        const short = Math.min(w, h);
+        const isLandscape = w >= h;
         
-        // 直接从InlineShape获取尺寸，无需转换
-        const inlineWidth = inlineShape.Width;
-        const inlineHeight = inlineShape.Height;
-        const currentLongSide = Math.max(inlineWidth, inlineHeight);
+        const longOver = long > MAX_LONG;
+        const shortOver = short > MAX_SHORT;
         
-        // 判断是否需要调整
-        const isInlineLandscape = inlineWidth >= inlineHeight;
-        const maxLongSide = isInlineLandscape ? maxLandscapeLongSide : maxPortraitLongSide;
-        const needsResize = currentLongSide > maxLongSide + EPSILON;
-        
-        // 仅对需要调整的图片执行转换操作
-        if (needsResize) {
-          const shape = inlineShape.ConvertToShape();
-          const rotation = shape.Rotation;
-          
-          let isLandscape;
-          if (rotation === 90 || rotation === 270) {
-            isLandscape = shape.Height > shape.Width;
-          } else {
-            isLandscape = shape.Width > shape.Height;
-          }
-          const directionText = isLandscape ? "横向" : "竖向";
-          const effectiveMaxLongSide = isLandscape ? maxLandscapeLongSide : maxPortraitLongSide;
-          const effectiveCurrentLongSide = Math.max(shape.Width, shape.Height);
-          
+        if (longOver || shortOver) {
+          const shape = img.ConvertToShape();
           shape.LockAspectRatio = -1;
           
-          if (shape.Width >= shape.Height) {
-            shape.Width = effectiveMaxLongSide;
-          } else {
-            shape.Height = effectiveMaxLongSide;
+          const orgWcm = window.Application.PointsToCentimeters(w).toFixed(2);
+          const orgHcm = window.Application.PointsToCentimeters(h).toFixed(2);
+          const longCm = window.Application.PointsToCentimeters(long).toFixed(2);
+          const shortCm = window.Application.PointsToCentimeters(short).toFixed(2);
+          const logs = [];
+          
+          if (longOver) {
+            logs.push(`长边超限(${longCm}cm>${MAX_LONG_CM_STR}cm)`);
+            if (isLandscape) shape.Width = MAX_LONG;
+            else shape.Height = MAX_LONG;
           }
           
-          const origLongCm = window.Application.PointsToCentimeters(effectiveCurrentLongSide).toFixed(2);
-          const newLongCm = window.Application.PointsToCentimeters(effectiveMaxLongSide).toFixed(2);
-          window.LogModule.addLog(`第${pageNum}页第${i}张${directionText}图片，长边${origLongCm}cm→${newLongCm}cm`, "info");
+          const shortAfterLong = Math.min(shape.Width, shape.Height);
+          const shortAfterLongCm = window.Application.PointsToCentimeters(shortAfterLong).toFixed(2);
+          
+          if (!longOver && shortOver) {
+            logs.push(`短边超限(${shortCm}cm>${MAX_SHORT_CM_STR}cm)`);
+            if (!isLandscape) shape.Width = MAX_SHORT;
+            else shape.Height = MAX_SHORT;
+          } else if (longOver && shortAfterLong > MAX_SHORT) {
+            logs.push(`长边调整后短边仍超限(${shortAfterLongCm}cm>${MAX_SHORT_CM_STR}cm)`);
+            if (shape.Width <= shape.Height) shape.Width = MAX_SHORT;
+            else shape.Height = MAX_SHORT;
+          }
+          
+          const newWcm = window.Application.PointsToCentimeters(shape.Width).toFixed(2);
+          const newHcm = window.Application.PointsToCentimeters(shape.Height).toFixed(2);
+          window.LogModule.addLog(`第${pageNum}页第${i}张${isLandscape ? '横向' : '竖向'}图: ${logs.join('; ')}，${orgWcm}×${orgHcm}cm → ${newWcm}×${newHcm}cm`, "info");
           resizedCount++;
           
-          const newInlineShape = shape.ConvertToInlineShape();
-          const currentStyleName = newInlineShape.Range.Style.NameLocal;
-          if (currentStyleName !== PICTURE_STYLE_NAME) {
-            newInlineShape.Range.Style = PICTURE_STYLE_NAME;
+          const newImg = shape.ConvertToInlineShape();
+          if (newImg.Range.Style.NameLocal !== PICTURE_STYLE_NAME) {
+            newImg.Range.Style = PICTURE_STYLE_NAME;
             styledCount++;
           }
-        } else {
-          // 尺寸合规，直接应用样式，无需转换
-          const currentStyleName = inlineShape.Range.Style.NameLocal;
-          if (currentStyleName !== PICTURE_STYLE_NAME) {
-            inlineShape.Range.Style = PICTURE_STYLE_NAME;
-            styledCount++;
-          }
+        } else if (img.Range.Style.NameLocal !== PICTURE_STYLE_NAME) {
+          img.Range.Style = PICTURE_STYLE_NAME;
+          styledCount++;
         }
       } catch (e) {
         window.LogModule.addLog(`应用样式到第${i}张图片失败: ${e.message}`, "warning");
