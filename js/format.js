@@ -404,10 +404,8 @@ function tableFormat() {
       // 2. 设置所有单元格的对齐方式
       range.ParagraphFormat.Alignment = WD_ALIGN_PARAGRAPH_CENTER;
       range.Cells.VerticalAlignment = WD_CELL_ALIGN_VERTICAL_CENTER;
-      window.LogModule.addLog(`  对齐方式: 水平居中、垂直居中`, "info");
       
       // 3. 设置首行加粗 - 使用多策略方案处理各种情况
-      window.LogModule.addLog(`  开始设置首行加粗...`, "info");
       let success = false;
       
       // 策略1：直接使用Row.Range（简单情况）
@@ -452,7 +450,7 @@ function tableFormat() {
       
       // 4. 设置表格自适应窗口
       table.AutoFitBehavior(WD_AUTO_FIT_WINDOW);
-      window.LogModule.addLog(`  表格自适应窗口设置完成`, "info");
+
       window.LogModule.addLog(`第${tableIndex}个表格基本格式处理完成`, "success");
     }
 
